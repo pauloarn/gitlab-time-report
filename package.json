@@ -1,0 +1,24 @@
+{
+  "name": "gitlab-time-report",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "process": "ts-node-dev generateReport.ts",
+    "processGql": "ts-node-dev generateReportGQL.ts"
+  },
+  "dependencies": {
+    "@apollo/client": "^3.11.5",
+    "@types/node": "^22.4.2",
+    "axios": "^1.7.5",
+    "date-fns": "^3.6.0",
+    "graphql": "^16.9.0",
+    "lodash": "^4.17.21",
+    "react": "^18.3.1",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
