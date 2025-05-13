@@ -91,12 +91,21 @@ export async function generateReport(userAccessToken, selectedMonth) {
                     });
                 }
             });
-
             if (timeLogAux.dataTrack.length > 0) {
+                timeLogAux.dataTrack.sort((a, b) => {
+                    const dateA = new Date(a.date);
+                    const dateB = new Date(b.date);
+                    return dateA.getTime() - dateB.getTime();
+                });
                 timeLogs.push(timeLogAux);
             }
         });
-        return timeLogs
+
+        return timeLogs.sort((a, b) => {
+            const dateA = new Date(a.dataTrack[0].date);
+            const dateB = new Date(b.dataTrack[0].date);
+            return dateA.getTime() - dateB.getTime();
+        });
     } catch (error) {
         throw new Error(`Erro ao gerar relatório: ${error.message}`);
     }

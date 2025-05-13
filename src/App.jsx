@@ -9,6 +9,7 @@ import {Eye, EyeOff} from "lucide-react";
 import {MonthPicker} from "@/components/ui/monthpicker.jsx";
 import {TimeLogTable} from "@/components/ui/timelogtable.jsx";
 import {convertTimeInHoursMinSec} from "@/lib/utils.js";
+import {format} from "date-fns";
 
 export default function App() {
     const [token, setToken] = useState("");
@@ -139,7 +140,14 @@ export default function App() {
                     listOfItems={[
                         {
                             key: 'description',
-                            title: 'Sub Tarefa'
+                            title: 'Descrição Hora'
+                        },
+                        {
+                            key: 'date', title: 'Data', render: (data) => {
+                                if (data) {
+                                    return format(new Date(data), 'dd/MM/yyyy')
+                                }
+                            }
                         },
                         {
                             key: 'timeLoggedInSeconds',
