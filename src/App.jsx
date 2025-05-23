@@ -10,12 +10,15 @@ import {MonthPicker} from "@/components/ui/monthpicker.jsx";
 import {TimeLogTable} from "@/components/ui/timelogtable.jsx";
 import {convertTimeInHoursMinSec} from "@/lib/utils.js";
 import {format} from "date-fns";
+import Tabs from "@/components/ui/tabs.jsx";
+import {InsightsTable} from "@/components/ui/insightstable.jsx";
 
 export default function App() {
     const [token, setToken] = useState("");
     const [loading, setLoading] = useState(false);
     const [showToken, setShowToken] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    const [insights, setInsights] = useState([])
     const [timeLogs, setTimeLogs] = useState([]);
     const [totalTime, setTotalTime] = useState(0);
     const {toast} = useToast();
@@ -41,10 +44,18 @@ export default function App() {
             })
             setTotalTime(auxTotal)
             setTimeLogs(csvContent);
-            toast({
-                title: "Sucesso!",
-                description: "Relatório gerado com sucesso",
-            });
+            extractInsights(csvContent);
+            if (csvContent.length) {
+                toast({
+                    title: "Sucesso!",
+                    description: "Relatório gerado com sucesso",
+                });
+            } else {
+                toast({
+                    title: "Sem Registros",
+                    description: "Nenhum registro encontrado para esse token no mês selecionado"
+                })
+            }
         } catch (error) {
             toast({
                 title: "Erro",
@@ -55,6 +66,31 @@ export default function App() {
             setLoading(false);
         }
     };
+
+    const extractInsights = (data) => {
+        const dates = {}
+        data.forEach((data) => {
+            data.dataTrack.forEach((secondary) => {
+                if (dates[secondary.date]) {
+                    dates[secondary.date] += secondary.timeLoggedInSeconds
+                } else {
+                    dates[secondary.date] = secondary.timeLoggedInSeconds
+                }
+            })
+        })
+        const keys = Object.keys(dates)
+        const final = []
+        keys.forEach((key) => {
+            final.push({date: key, time: dates[key]})
+        })
+        final.sort((a, b) => {
+            const dateA = new Date(a.date);
+            const dateB = new Date(b.date);
+            return dateA.getTime() - dateB.getTime();
+        });
+        setInsights(final)
+    }
+
 
     return (
         <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-1">
@@ -133,28 +169,32 @@ export default function App() {
                 </div>
             </motion.div>
             {timeLogs.length > 0 &&
-                <TimeLogTable
-                    data={[...timeLogs, {dataTrack: [{description: "Total", timeLoggedInSeconds: totalTime}]}]}
-                    mainKeyInfo={{key: 'taskName', title: 'Tarefa'}}
-                    subKey="dataTrack"
-                    listOfItems={[
-                        {
-                            key: 'description',
-                            title: 'Descrição Hora'
-                        },
-                        {
-                            key: 'date', title: 'Data', render: (data) => {
-                                if (data) {
-                                    return format(new Date(data), 'dd/MM/yyyy')
+                <Tabs
+                    items={[{
+                        title: 'Geral', component: <TimeLogTable
+                            data={[...timeLogs, {dataTrack: [{description: "Total", timeLoggedInSeconds: totalTime}]}]}
+                            mainKeyInfo={{key: 'taskName', title: 'Tarefa'}}
+                            subKey="dataTrack"
+                            listOfItems={[
+                                {
+                                    key: 'description',
+                                    title: 'Descrição Hora'
+                                },
+                                {
+                                    key: 'date', title: 'Data', render: (data) => {
+                                        if (data) {
+                                            return format(new Date(data), 'dd/MM/yyyy')
+                                        }
+                                    }
+                                },
+                                {
+                                    key: 'timeLoggedInSeconds',
+                                    title: 'Horas Trabalhadas',
+                                    render: convertTimeInHoursMinSec
                                 }
-                            }
-                        },
-                        {
-                            key: 'timeLoggedInSeconds',
-                            title: 'Horas Trabalhadas',
-                            render: convertTimeInHoursMinSec
-                        }
-                    ]}
+                            ]}
+                        />
+                    }, {title: 'Insights', component: <InsightsTable data={insights} selectedDate={selectedDate}/>}]}
                 />
             }
             <Toaster/>

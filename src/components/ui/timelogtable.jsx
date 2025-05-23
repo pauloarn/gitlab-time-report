@@ -12,7 +12,7 @@ export function TimeLogTable({data, mainKeyInfo, subKey, listOfItems}) {
     }
 
     return (
-        <div className="overflow-x-scroll min-w-min p-12">
+        <div className=" min-w-min p-12">
             <table className=" border-collapse table-auto">
                 <thead className="bg-gray-50">
                 <tr>
