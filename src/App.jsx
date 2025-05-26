@@ -12,12 +12,14 @@ import {convertTimeInHoursMinSec} from "@/lib/utils.js";
 import {format} from "date-fns";
 import Tabs from "@/components/ui/tabs.jsx";
 import {InsightsTable} from "@/components/ui/insightstable.jsx";
+import {fetchHollidays} from "@/lib/hollidays.js";
 
 export default function App() {
     const [token, setToken] = useState("");
     const [loading, setLoading] = useState(false);
     const [showToken, setShowToken] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    const [hollidays, setHollidays] = useState([])
     const [insights, setInsights] = useState([])
     const [timeLogs, setTimeLogs] = useState([]);
     const [totalTime, setTotalTime] = useState(0);
@@ -45,6 +47,8 @@ export default function App() {
             setTotalTime(auxTotal)
             setTimeLogs(csvContent);
             extractInsights(csvContent);
+            const innerHollidays = await fetchHollidays(selectedDate.getFullYear())
+            setHollidays(innerHollidays)
             if (csvContent.length) {
                 toast({
                     title: "Sucesso!",
@@ -71,10 +75,11 @@ export default function App() {
         const dates = {}
         data.forEach((data) => {
             data.dataTrack.forEach((secondary) => {
-                if (dates[secondary.date]) {
-                    dates[secondary.date] += secondary.timeLoggedInSeconds
+                const key = secondary.date.split("T")[0]
+                if (dates[key]) {
+                    dates[key] += secondary.timeLoggedInSeconds
                 } else {
-                    dates[secondary.date] = secondary.timeLoggedInSeconds
+                    dates[key] = secondary.timeLoggedInSeconds
                 }
             })
         })
@@ -194,7 +199,10 @@ export default function App() {
                                 }
                             ]}
                         />
-                    }, {title: 'Insights', component: <InsightsTable data={insights} selectedDate={selectedDate}/>}]}
+                    }, {
+                        title: 'Insights',
+                        component: <InsightsTable data={insights} selectedDate={selectedDate} hollidays={hollidays}/>
+                    }]}
                 />
             }
             <Toaster/>

@@ -2,7 +2,8 @@ import React from 'react';
 import {eachDayOfInterval, endOfMonth, format, getDay, startOfMonth} from 'date-fns';
 import {convertTimeInHoursMinSec} from '@/lib/utils.js';
 
-export function InsightsTable({data, selectedDate}) {
+export function InsightsTable({data, selectedDate, hollidays}) {
+    console.log(hollidays)
     const getDaysInMonth = () => {
         const start = startOfMonth(selectedDate);
         const end = endOfMonth(selectedDate);
@@ -25,10 +26,19 @@ export function InsightsTable({data, selectedDate}) {
                 ))}
                 {days.map((day) => {
                     const dateStr = format(day, 'yyyy-MM-dd');
-                    const dayData = data.find(item => format(new Date(item.date), 'yyyy-MM-dd') === dateStr);
+                    const dayData = data.find(item => {
+                        return format(new Date(item.date).setDate(new Date(item.date).getDate() + 1), 'yyyy-MM-dd') === dateStr
+                    });
+                    const isHoliday = hollidays.map(h => h.date).includes(dateStr);
                     return (
                         <div key={dateStr} className="p-2 border rounded min-h-[80px] text-center">
                             <div className="font-medium">{format(day, 'd')}</div>
+                            {isHoliday && (
+                                <div
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
+                                    Feriado
+                                </div>
+                            )}
                             {dayData && (
                                 <div className="text-xs text-gray-600 mt-1">
                                     {convertTimeInHoursMinSec(dayData.time)}
