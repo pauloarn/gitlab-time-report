@@ -1,22 +1,10 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { getFormattedBusinessHours } from '@/lib/businessHours'
-import { fetchHollidays } from '@/lib/hollidays'
+import { useHolidays } from '@/hooks/useHolidays'
 
 export function BusinessHours({ selectedDate, totalTime }) {
 	const [hoursPerDay, setHoursPerDay] = useState(8)
-	const [holidays, setHollidays] = useState([])
-
-	useEffect(() => {
-		async function loadHolidays() {
-			try {
-				const yearHolidays = await fetchHollidays(selectedDate.getFullYear())
-				setHollidays(yearHolidays)
-			} catch (error) {
-				console.error('Falha ao carregar feriados:', error)
-			}
-		}
-		loadHolidays()
-	}, [selectedDate.getFullYear()])
+	const { data: holidays = [], isLoading, error } = useHolidays(selectedDate.getFullYear())
 
 	const handleHoursChange = (event) => {
 		setHoursPerDay(Number(event.target.value))
@@ -29,6 +17,29 @@ export function BusinessHours({ selectedDate, totalTime }) {
 		holidays,
 		totalTime || 0
 	)
+
+	if (isLoading) {
+		return (
+			<div className='p-4 bg-white rounded-lg shadow'>
+				<div className='animate-pulse space-y-4'>
+					<div className='h-4 bg-gray-200 rounded w-1/4'></div>
+					<div className='space-y-2'>
+						<div className='h-4 bg-gray-200 rounded'></div>
+						<div className='h-4 bg-gray-200 rounded'></div>
+						<div className='h-4 bg-gray-200 rounded'></div>
+					</div>
+				</div>
+			</div>
+		)
+	}
+
+	if (error) {
+		return (
+			<div className='p-4 bg-white rounded-lg shadow'>
+				<div className='text-red-600'>Erro ao carregar feriados. Por favor, tente novamente.</div>
+			</div>
+		)
+	}
 
 	return (
 		<div className='p-4 bg-white rounded-lg shadow'>
