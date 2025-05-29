@@ -1,10 +1,13 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { getFormattedBusinessHours } from '@/lib/businessHours'
 import { useHolidays } from '@/hooks/useHolidays'
+import { SuccessAnimation } from '@/components/ui/SuccessAnimation.jsx'
 
 export function BusinessHours({ selectedDate, totalTime }) {
 	const [hoursPerDay, setHoursPerDay] = useState(8)
 	const { data: holidays = [], isLoading, error } = useHolidays(selectedDate.getFullYear())
+	const [showSuccessAnimation, setShowSuccessAnimation] = useState(false)
+	const hasPlayedRef = useRef(false)
 
 	const handleHoursChange = (event) => {
 		setHoursPerDay(Number(event.target.value))
@@ -17,6 +20,21 @@ export function BusinessHours({ selectedDate, totalTime }) {
 		holidays,
 		totalTime || 0
 	)
+
+	// Play animation only when completed and not played yet
+	useEffect(() => {
+		if (
+			businessHoursInfo.remainingHours <= 0 &&
+			businessHoursInfo.isComplete &&
+			!hasPlayedRef.current
+		) {
+			setShowSuccessAnimation(true)
+			hasPlayedRef.current = true
+		}
+		if (businessHoursInfo.remainingHours > 0) {
+			hasPlayedRef.current = false
+		}
+	}, [businessHoursInfo.remainingHours, businessHoursInfo.isComplete])
 
 	if (isLoading) {
 		return (
@@ -43,6 +61,9 @@ export function BusinessHours({ selectedDate, totalTime }) {
 
 	return (
 		<div className='p-4 bg-white rounded-lg shadow'>
+			{showSuccessAnimation && (
+				<SuccessAnimation onComplete={() => setShowSuccessAnimation(false)} />
+			)}
 			<h2 className='text-xl font-semibold mb-4'>Cálculo de Horas Úteis</h2>
 
 			<div className='space-y-4'>
