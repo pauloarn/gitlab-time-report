@@ -1,6 +1,6 @@
-import path from 'node:path';
-import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vite';
+import path from 'node:path'
+import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite'
 
 const configHorizonsViteErrorHandler = `
 const observer = new MutationObserver((mutations) => {
@@ -47,7 +47,7 @@ function handleViteOverlay(node) {
 		}, '*');
 	}
 }
-`;
+`
 
 const configHorizonsRuntimeErrorHandler = `
 window.onerror = (message, source, lineno, colno, errorObj) => {
@@ -60,7 +60,7 @@ window.onerror = (message, source, lineno, colno, errorObj) => {
 		error: errorObj && errorObj.stack
 	}, '*');
 };
-`;
+`
 
 const configHorizonsConsoleErrroHandler = `
 const originalConsoleError = console.error;
@@ -74,7 +74,7 @@ console.error = function(...args) {
 		error: errorString
 	}, '*');
 };
-`;
+`
 
 const configWindowFetchMonkeyPatch = `
 const originalFetch = window.fetch;
@@ -113,7 +113,7 @@ window.fetch = function(...args) {
 			throw error;
 		});
 };
-`;
+`
 
 const addTransformIndexHtml = {
 	name: 'add-transform-index-html',
@@ -135,7 +135,7 @@ const addTransformIndexHtml = {
 				},
 				{
 					tag: 'script',
-					attrs: {type: 'module'},
+					attrs: { type: 'module' },
 					children: configHorizonsConsoleErrroHandler,
 					injectTo: 'head',
 				},
@@ -146,11 +146,11 @@ const addTransformIndexHtml = {
 					injectTo: 'head',
 				},
 			],
-		};
+		}
 	},
-};
+}
 
-console.warn = () => {};
+console.warn = () => {}
 
 export default defineConfig({
 	plugins: [react(), addTransformIndexHtml],
@@ -162,9 +162,23 @@ export default defineConfig({
 		allowedHosts: true,
 	},
 	resolve: {
-		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json', ],
+		extensions: ['.jsx', '.js', '.tsx', '.ts', '.json'],
 		alias: {
 			'@': path.resolve(__dirname, './src'),
 		},
 	},
-});
+	publicDir: 'public',
+	build: {
+		assetsDir: 'assets',
+		rollupOptions: {
+			output: {
+				assetFileNames: (assetInfo) => {
+					if (assetInfo.name === 'favicon.ico') {
+						return 'favicon.ico'
+					}
+					return 'assets/[name]-[hash][extname]'
+				},
+			},
+		},
+	},
+})
