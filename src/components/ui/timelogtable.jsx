@@ -35,7 +35,19 @@ export function TimeLogTable({ data, mainKeyInfo, subKey, listOfItems }) {
 						return (
 							<tr key={index} className='hover:bg-gray-50'>
 								<td className='w-1/4 px-4 py-4 text-sm font-medium text-gray-900 break-words'>
-									{item[mainKeyInfo.key]}
+									{item.webUrl ? (
+										<a
+											href={item.webUrl}
+											target='_blank'
+											rel='noopener noreferrer'
+											className='text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-200 flex items-center gap-2'
+											title='Clique para abrir no GitLab'
+										>
+											{item[mainKeyInfo.key]}
+										</a>
+									) : (
+										item[mainKeyInfo.key]
+									)}
 								</td>
 								{listOfItems.map((itemKey, index) => (
 									<td
