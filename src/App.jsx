@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Toaster } from '@/components/ui/toaster'
@@ -14,11 +14,14 @@ import Tabs from '@/components/ui/tabs.jsx'
 import { InsightsTable } from '@/components/ui/insightstable.jsx'
 import { BusinessHours } from '@/components/ui/businesshours.jsx'
 import { fetchHollidays } from '@/lib/hollidays.js'
+import { useToken } from '@/hooks/useToken'
+
+const TOKEN_STORAGE_KEY = 'gitlab_token'
 
 export default function App() {
-	const [token, setToken] = useState('')
+	const { token, showToken, handleTokenChange, handleClearToken, toggleTokenVisibility } =
+		useToken()
 	const [loading, setLoading] = useState(false)
-	const [showToken, setShowToken] = useState(false)
 	const [selectedDate, setSelectedDate] = useState(
 		new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 	)
@@ -27,6 +30,13 @@ export default function App() {
 	const [timeLogs, setTimeLogs] = useState([])
 	const [totalTime, setTotalTime] = useState(0)
 	const { toast } = useToast()
+
+	useEffect(() => {
+		const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+		if (savedToken) {
+			handleTokenChange({ target: { value: savedToken } })
+		}
+	}, [handleTokenChange])
 
 	const handleGenerateCSV = async () => {
 		if (!token) {
@@ -113,18 +123,30 @@ export default function App() {
 
 				<div className='bg-white p-6 rounded-xl shadow-lg space-y-6'>
 					<div className='space-y-2'>
-						<label className='text-sm font-medium text-gray-700'>Token de Acesso do GitLab</label>
+						<div className='flex justify-between items-center'>
+							<label className='text-sm font-medium text-gray-700'>Token de Acesso do GitLab</label>
+							{token && (
+								<Button
+									onClick={handleClearToken}
+									variant='ghost'
+									size='sm'
+									className='text-red-600 hover:text-red-700 hover:bg-red-50'
+								>
+									Limpar Token
+								</Button>
+							)}
+						</div>
 						<div className='relative'>
 							<Input
 								type={showToken ? 'text' : 'password'}
 								placeholder='Cole seu token aqui'
 								value={token}
-								onChange={(e) => setToken(e.target.value)}
+								onChange={handleTokenChange}
 								className='w-full pr-10'
 							/>
 							<button
 								type='button'
-								onClick={() => setShowToken(!showToken)}
+								onClick={toggleTokenVisibility}
 								className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700'
 							>
 								{showToken ? <Eye className='h-4 w-4' /> : <EyeOff className='h-4 w-4' />}
