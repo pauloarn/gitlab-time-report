@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  gitlab-time-report:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_VERSION: 18-alpine
+        NGINX_VERSION: stable-alpine
+    image: gitlab-time-report:latest
+    container_name: gitlab-time-report-app
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    environment:
+      - NODE_ENV=production
+    networks:
+      - gitlab-time-report-network
+
+networks:
+  gitlab-time-report-network:
+    driver: bridge 
