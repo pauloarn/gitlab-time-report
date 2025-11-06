@@ -7,7 +7,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { LogOut } from 'lucide-react'
+import { LogOut, Moon, Sun } from 'lucide-react'
+import { useTheme } from '@/contexts/ThemeContext'
 import type { GitLabUser } from '@/types'
 
 interface HeaderProps {
@@ -18,6 +19,8 @@ interface HeaderProps {
 }
 
 export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) {
+  const { theme, toggleTheme } = useTheme()
+  
   const getInitials = (name?: string, username?: string) => {
     if (name) {
       return name
@@ -51,6 +54,7 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
 
   const displayName = user?.name || user?.username || 'Usuário'
   const avatarUrl = normalizeAvatarUrl(user?.avatarUrl)
+  const logoPath = theme === 'dark' ? '/black-git-horas-icon.png' : '/white-git-horas-icon.png'
 
   const tabs = ['Geral', 'Insights', 'Horas Úteis']
 
@@ -60,7 +64,8 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
         <div className="flex h-16 items-center justify-between gap-4">
           <div className="flex items-center flex-shrink-0">
             <img
-              src="/git-horas-icon.png"
+              key={theme}
+              src={logoPath}
               alt="Git Horas Logo"
               className="h-24 w-24 object-contain"
             />
@@ -73,8 +78,8 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
                 onClick={() => onTabChange(index)}
                 className={`px-4 py-2 rounded-t-lg transition-colors text-sm font-medium ${
                   activeTab === index
-                    ? 'bg-white text-blue-600 border-b-2 border-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                    ? 'bg-white dark:bg-gray-800 text-orange-600 dark:text-orange-400 border-b-2 border-orange-600 dark:border-orange-400'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
                 {tab}
@@ -96,7 +101,7 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
                     {avatarUrl ? (
                       <AvatarImage src={avatarUrl} alt={displayName} />
                     ) : null}
-                    <AvatarFallback className="bg-blue-100 text-blue-700">
+                    <AvatarFallback className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300">
                       {getInitials(user?.name, user?.username)}
                     </AvatarFallback>
                   </Avatar>
@@ -108,7 +113,7 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
                     {avatarUrl ? (
                       <AvatarImage src={avatarUrl} alt={displayName} />
                     ) : null}
-                    <AvatarFallback className="bg-blue-100 text-blue-700 text-xs">
+                    <AvatarFallback className="bg-orange-100 dark:bg-orange-900 text-orange-700 dark:text-orange-300 text-xs">
                       {getInitials(user?.name, user?.username)}
                     </AvatarFallback>
                   </Avatar>
@@ -121,6 +126,20 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
                     )}
                   </div>
                 </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={toggleTheme} className="cursor-pointer">
+                  {theme === 'dark' ? (
+                    <>
+                      <Sun className="mr-2 h-4 w-4" />
+                      <span>Modo Claro</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="mr-2 h-4 w-4" />
+                      <span>Modo Escuro</span>
+                    </>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
                   <LogOut className="mr-2 h-4 w-4" />

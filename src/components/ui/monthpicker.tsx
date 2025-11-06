@@ -39,12 +39,12 @@ export function MonthPicker({ currentValue, setValue }: MonthPickerProps) {
   }
 
   return (
-    <div className="flex flex-col p-1 bg-white rounded-lg shadow-sm">
+    <div className="flex flex-col p-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
       <div className="flex items-center justify-between w-full mb-2">
         <Button variant="ghost" size="icon" onClick={() => changeYear(-1)}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <span className="font-semibold">{currentYear}</span>
+        <span className="font-semibold dark:text-gray-100">{currentYear}</span>
         <Button variant="ghost" size="icon" onClick={() => changeYear(1)}>
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -55,7 +55,7 @@ export function MonthPicker({ currentValue, setValue }: MonthPickerProps) {
             key={month}
             variant="ghost"
             className={`text-sm p-2 ${
-              index === currentMonth ? 'bg-blue-100' : ''
+              index === currentMonth ? 'bg-orange-100 dark:bg-orange-900' : ''
             }`}
             onClick={() => handleMonthChange(index)}
           >

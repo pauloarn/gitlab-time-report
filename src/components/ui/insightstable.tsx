@@ -34,7 +34,7 @@ export function InsightsTable({
     <div className="w-full">
       <div className="grid grid-cols-7 gap-1">
         {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day) => (
-          <div key={day} className="p-2 text-center font-medium text-gray-500">
+          <div key={day} className="p-2 text-center font-medium text-gray-500 dark:text-gray-400">
             {day}
           </div>
         ))}
@@ -52,16 +52,16 @@ export function InsightsTable({
           return (
             <div
               key={dateStr}
-              className="p-2 border rounded min-h-[80px] text-center"
+              className="p-2 border dark:border-gray-700 rounded min-h-[80px] text-center dark:bg-gray-800"
             >
-              <div className="font-medium">{format(day, 'd')}</div>
+              <div className="font-medium dark:text-gray-100">{format(day, 'd')}</div>
               {isHoliday && (
-                <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 mt-1">
+                <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 mt-1">
                   Feriado
                 </div>
               )}
               {dayData && (
-                <div className="text-xs text-gray-600 mt-1">
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {convertTimeInHoursMinSec(dayData.time)}
                 </div>
               )}
@@ -69,9 +69,9 @@ export function InsightsTable({
           )
         })}
       </div>
-      <div className="mt-4 p-4 border rounded text-center">
-        <div className="font-medium text-gray-700">Total de Horas</div>
-        <div className="text-lg text-gray-900">
+      <div className="mt-4 p-4 border dark:border-gray-700 rounded text-center dark:bg-gray-800">
+        <div className="font-medium text-gray-700 dark:text-gray-300">Total de Horas</div>
+        <div className="text-lg text-gray-900 dark:text-gray-100">
           {data.reduce((acc, curr) => acc + curr.time, 0) > 0
             ? convertTimeInHoursMinSec(
                 data.reduce((acc, curr) => acc + curr.time, 0)

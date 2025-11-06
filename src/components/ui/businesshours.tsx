@@ -45,13 +45,13 @@ export function BusinessHours({ selectedDate, totalTime }: BusinessHoursProps) {
 
   if (isLoading) {
     return (
-      <div className="p-4 bg-white rounded-lg shadow">
+      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
         <div className="animate-pulse space-y-4">
-          <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
           <div className="space-y-2">
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
-            <div className="h-4 bg-gray-200 rounded"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
+            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
           </div>
         </div>
       </div>
@@ -60,8 +60,8 @@ export function BusinessHours({ selectedDate, totalTime }: BusinessHoursProps) {
 
   if (error) {
     return (
-      <div className="p-4 bg-white rounded-lg shadow">
-        <div className="text-red-600">
+      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <div className="text-red-600 dark:text-red-400">
           Erro ao carregar feriados. Por favor, tente novamente.
         </div>
       </div>
@@ -69,15 +69,15 @@ export function BusinessHours({ selectedDate, totalTime }: BusinessHoursProps) {
   }
 
   return (
-    <div className="p-4 bg-white rounded-lg shadow">
+    <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
       {showSuccessAnimation && (
         <SuccessAnimation onComplete={() => setShowSuccessAnimation(false)} />
       )}
-      <h2 className="text-xl font-semibold mb-4">Cálculo de Horas Úteis</h2>
+      <h2 className="text-xl font-semibold mb-4 dark:text-gray-100">Cálculo de Horas Úteis</h2>
 
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Horas por Dia
           </label>
           <input
@@ -86,37 +86,37 @@ export function BusinessHours({ selectedDate, totalTime }: BusinessHoursProps) {
             max="24"
             value={hoursPerDay}
             onChange={handleHoursChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
           />
         </div>
 
-        <div className="mt-6 p-4 bg-gray-50 rounded-md">
-          <h3 className="text-lg font-medium mb-2">Resumo de Horas</h3>
+        <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-700 rounded-md">
+          <h3 className="text-lg font-medium mb-2 dark:text-gray-100">Resumo de Horas</h3>
           <div className="space-y-2">
-            <p>
+            <p className="dark:text-gray-300">
               <span className="font-medium">Mês:</span> {businessHoursInfo.monthName}
             </p>
-            <p>
+            <p className="dark:text-gray-300">
               <span className="font-medium">Dias Úteis:</span>{' '}
               {businessHoursInfo.businessDays}
             </p>
-            <p>
+            <p className="dark:text-gray-300">
               <span className="font-medium">Horas por Dia:</span>{' '}
               {businessHoursInfo.hoursPerDay}
             </p>
-            <p>
+            <p className="dark:text-gray-300">
               <span className="font-medium">Horas Esperadas:</span>{' '}
               {businessHoursInfo.totalHours.toFixed(1)}h
             </p>
-            <p>
+            <p className="dark:text-gray-300">
               <span className="font-medium">Horas Registradas:</span>{' '}
               {businessHoursInfo.loggedHours.toFixed(1)}h
             </p>
             <p
               className={`font-medium ${
                 businessHoursInfo.remainingHours > 0
-                  ? 'text-red-600'
-                  : 'text-green-600'
+                  ? 'text-red-600 dark:text-red-400'
+                  : 'text-green-600 dark:text-green-400'
               }`}
             >
               {businessHoursInfo.remainingHours > 0

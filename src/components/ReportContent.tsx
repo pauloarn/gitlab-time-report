@@ -44,19 +44,19 @@ export function ReportContent({
       case 0: // Geral
         return (
           <div className="p-12 text-center">
-            <p className="text-gray-500">Nenhum registro encontrado para este mês</p>
+            <p className="text-gray-500 dark:text-gray-400">Nenhum registro encontrado para este mês</p>
           </div>
         )
       case 1: // Insights
         return (
           <div className="p-12 text-center">
-            <p className="text-gray-500">Nenhum insight disponível para este mês</p>
+            <p className="text-gray-500 dark:text-gray-400">Nenhum insight disponível para este mês</p>
           </div>
         )
       case 2: // Horas Úteis
         return (
           <div className="p-12 text-center">
-            <p className="text-gray-500">Nenhum dado disponível para calcular horas úteis</p>
+            <p className="text-gray-500 dark:text-gray-400">Nenhum dado disponível para calcular horas úteis</p>
           </div>
         )
       default:
@@ -100,7 +100,7 @@ export function ReportContent({
                       </span>
                     )
                   }
-                  return <span className="text-gray-400">-</span>
+                  return <span className="text-gray-400 dark:text-gray-500">-</span>
                 }
                 return <span>{value as number}</span>
               },
@@ -121,7 +121,7 @@ export function ReportContent({
                       </span>
                     )
                   }
-                  return <span className="text-gray-400">-</span>
+                  return <span className="text-gray-400 dark:text-gray-500">-</span>
                 }
                 return <span>{convertTimeInHoursMinSec(value as number)}</span>
               },

@@ -125,7 +125,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800">
       <Header
         user={user}
         onLogout={handleLogout}
@@ -136,7 +136,7 @@ export default function App() {
         <div className="flex gap-8">
           {/* Calendário à esquerda */}
           <div className="flex-shrink-0">
-            <div className="bg-white p-6 rounded-xl shadow-lg sticky top-24">
+            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg sticky top-24">
               <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
               {timeLogs.length > 0 && (
                 <div className="mt-6">
@@ -153,8 +153,8 @@ export default function App() {
           {/* Conteúdo à direita */}
           <div className="flex-1 min-w-0">
             {loading && (
-              <div className="bg-white p-6 rounded-xl shadow-lg text-center">
-                <p className="text-gray-600">Carregando dados...</p>
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
+                <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
               </div>
             )}
 
@@ -166,7 +166,7 @@ export default function App() {
                   </div>
                 )}
 
-                <div className="bg-white rounded-xl shadow-lg">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
                   <ReportContent
                     activeTab={activeTab}
                     timeLogs={timeLogs}
