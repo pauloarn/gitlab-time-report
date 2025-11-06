@@ -16,6 +16,8 @@ A web application for generating and visualizing time reports from GitLab.
 - **UI Components**: Radix UI
 - **API Integration**: Apollo Client (GraphQL)
 - **Date Handling**: date-fns
+- **Package Manager**: pnpm
+- **Code Quality**: ESLint 9, TypeScript, Commitlint, Husky
 
 ## Installation
 
@@ -72,6 +74,55 @@ pnpm build
 
 The built files will be in the `dist` directory.
 
+## Code Quality
+
+### Linting
+
+```bash
+# Run ESLint
+pnpm lint
+
+# Fix ESLint issues automatically
+pnpm lint:fix
+```
+
+### Commit Messages
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) format enforced by [commitlint](https://commitlint.js.org/).
+
+**Commit message format:**
+```
+<type>(<scope>): <subject>
+
+[optional body]
+
+[optional footer]
+```
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, etc.)
+- `refactor`: Code refactoring
+- `perf`: Performance improvements
+- `test`: Adding or updating tests
+- `build`: Build system changes
+- `ci`: CI/CD changes
+- `chore`: Other changes (dependencies, etc.)
+
+**Examples:**
+```bash
+feat: add token input component
+fix(api): handle GitLab API errors
+docs: update README with commit guidelines
+refactor(services): improve GitLab service structure
+```
+
+**Husky Hooks:**
+- `pre-commit`: Runs ESLint before committing
+- `commit-msg`: Validates commit message format
+
 ## Project Structure
 
 ```
@@ -96,6 +147,7 @@ gitlab-time-report/
 ├── postcss.config.js  # PostCSS configuration
 ├── tailwind.config.js # Tailwind configuration
 ├── tsconfig.json      # TypeScript configuration
+├── commitlint.config.js # Commitlint configuration
 └── vite.config.ts     # Vite configuration
 ```
 
@@ -107,4 +159,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 When using or redistributing this software, you must give appropriate credit by including the names of the original authors:
 
 - Paulo Amador Neto
-- Matthews Soares Goncalves 
+- Matthews Soares Goncalves

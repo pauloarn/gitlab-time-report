@@ -15,6 +15,9 @@ node_modules
 # Turborepo
 .turbo
 
+# Husky
+.husky/_
+
 # Build outputs
 dist
 dist-ssr
