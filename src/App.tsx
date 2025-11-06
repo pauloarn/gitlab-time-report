@@ -6,6 +6,7 @@ import { MonthPicker } from '@/components/ui/monthpicker'
 import { TokenInput } from '@/components/TokenInput'
 import { ReportActions } from '@/components/ReportActions'
 import { ReportTabs } from '@/components/ReportTabs'
+import { IssueValidationAlert } from '@/components/IssueValidationAlert'
 import { useToken } from '@/hooks/useToken'
 import { useTimeLogs } from '@/hooks/useTimeLogs'
 import { useHolidays } from '@/hooks/useHolidays'
@@ -18,6 +19,7 @@ export default function App() {
     timeLogs,
     totalTime,
     insights,
+    validations,
     loading,
     generateReport,
     downloadCSV,
@@ -47,12 +49,17 @@ export default function App() {
     }
 
     try {
-      const csvContent = await generateReport(token, selectedDate)
+      const result = await generateReport(token, selectedDate)
       
-      if (csvContent.length) {
+      if (result.timeLogs.length) {
+        const hasWarnings = result.validations.length > 0
+        
         toast({
-          title: 'Sucesso!',
-          description: 'Relatório gerado com sucesso',
+          title: hasWarnings ? 'Relatório gerado com avisos' : 'Sucesso!',
+          description: hasWarnings
+            ? `${result.validations.length} demanda(s) sem Weight ou Time Estimate`
+            : 'Relatório gerado com sucesso',
+          variant: hasWarnings ? 'default' : 'default',
         })
       } else {
         toast({
@@ -114,6 +121,12 @@ export default function App() {
           </p>
         </div>
       </motion.div>
+
+      {validations.length > 0 && (
+        <div className="max-w-md mx-auto">
+          <IssueValidationAlert validations={validations} />
+        </div>
+      )}
 
       <ReportTabs
         timeLogs={timeLogs}

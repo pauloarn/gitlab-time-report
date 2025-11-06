@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react'
 import { GitLabService } from '@/services/gitlab.service'
-import type { TimeLog, Insight } from '@/types'
+import type { Insight, IssueValidation, TimeLog } from '@/types'
 
 export function useTimeLogs() {
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([])
   const [totalTime, setTotalTime] = useState<number>(0)
   const [insights, setInsights] = useState<Insight[]>([])
+  const [validations, setValidations] = useState<IssueValidation[]>([])
   const [loading, setLoading] = useState<boolean>(false)
 
   const extractInsights = useCallback((data: TimeLog[]) => {
@@ -45,7 +46,8 @@ export function useTimeLogs() {
       setLoading(true)
       try {
         const gitlabService = new GitLabService(token)
-        const csvContent = await gitlabService.generateReport(selectedDate)
+        const { timeLogs: csvContent, validations: issueValidations } =
+          await gitlabService.generateReport(selectedDate)
 
         const auxTotal = csvContent.reduce((acc, element) => {
           return (
@@ -59,9 +61,10 @@ export function useTimeLogs() {
 
         setTotalTime(auxTotal)
         setTimeLogs(csvContent)
+        setValidations(issueValidations)
         extractInsights(csvContent)
 
-        return csvContent
+        return { timeLogs: csvContent, validations: issueValidations }
       } finally {
         setLoading(false)
       }
@@ -77,12 +80,14 @@ export function useTimeLogs() {
     setTimeLogs([])
     setTotalTime(0)
     setInsights([])
+    setValidations([])
   }, [])
 
   return {
     timeLogs,
     totalTime,
     insights,
+    validations,
     loading,
     generateReport,
     downloadCSV,

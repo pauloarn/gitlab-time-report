@@ -3,6 +3,7 @@ import { format, isBefore } from 'date-fns'
 import type {
   GitLabQueryResponse,
   GitLabUser,
+  IssueValidation,
   MonthPeriod,
   TimeLog,
 } from '@/types'
@@ -36,6 +37,8 @@ const createTimeLogQuery = (userId: string, selectedDate: string) => {
         nodes {
           name
           webUrl
+          weight
+          timeEstimate
           timelogs(first: 100) {
             count
             totalSpentTime
@@ -90,7 +93,10 @@ export class GitLabService {
     }
   }
 
-  async generateReport(selectedMonth: Date): Promise<TimeLog[]> {
+  async generateReport(selectedMonth: Date): Promise<{
+    timeLogs: TimeLog[]
+    validations: IssueValidation[]
+  }> {
     try {
       const user = await this.getCurrentUser()
       const dateReferences = getMonthPeriod(selectedMonth)
@@ -100,11 +106,14 @@ export class GitLabService {
       })
 
       const timeLogs: TimeLog[] = []
+      const validations: IssueValidation[] = []
 
       response.data.issues.nodes.forEach((node) => {
         const timeLogAux: TimeLog = {
           taskName: node.name,
           webUrl: node.webUrl,
+          weight: node.weight,
+          timeEstimate: node.timeEstimate,
           dataTrack: [],
         }
 
@@ -125,7 +134,22 @@ export class GitLabService {
           }
         })
 
+        // Verificar se a issue tem weight e timeEstimate apenas se tiver time logs
         if (timeLogAux.dataTrack.length > 0) {
+          const hasWeight = node.weight !== null && node.weight !== undefined
+          const hasTimeEstimate =
+            node.timeEstimate !== null && node.timeEstimate !== undefined
+
+          // Adicionar à lista de validações se faltar alguma informação
+          if (!hasWeight || !hasTimeEstimate) {
+            validations.push({
+              hasWeight,
+              hasTimeEstimate,
+              issueName: node.name,
+              issueUrl: node.webUrl,
+            })
+          }
+
           timeLogAux.dataTrack.sort((a, b) => {
             const dateA = new Date(a.date)
             const dateB = new Date(b.date)
@@ -135,11 +159,14 @@ export class GitLabService {
         }
       })
 
-      return timeLogs.sort((a, b) => {
-        const dateA = new Date(a.dataTrack[0].date)
-        const dateB = new Date(b.dataTrack[0].date)
-        return dateA.getTime() - dateB.getTime()
-      })
+      return {
+        timeLogs: timeLogs.sort((a, b) => {
+          const dateA = new Date(a.dataTrack[0].date)
+          const dateB = new Date(b.dataTrack[0].date)
+          return dateA.getTime() - dateB.getTime()
+        }),
+        validations,
+      }
     } catch (error) {
       throw new Error(
         `Erro ao gerar relatório: ${error instanceof Error ? error.message : 'Erro desconhecido'}`

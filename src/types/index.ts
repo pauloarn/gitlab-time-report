@@ -9,6 +9,8 @@ export interface TimeLog {
   taskName: string
   webUrl: string
   dataTrack: TimeLogEntry[]
+  weight?: number | null
+  timeEstimate?: number | null
 }
 
 // Holiday Types
@@ -52,6 +54,8 @@ export interface GitLabTimeLog {
 export interface GitLabIssue {
   name: string
   webUrl: string
+  weight?: number | null
+  timeEstimate?: number | null
   timelogs: {
     count: number
     totalSpentTime: number
@@ -60,6 +64,13 @@ export interface GitLabIssue {
       hasNextPage: boolean
     }
   }
+}
+
+export interface IssueValidation {
+  hasWeight: boolean
+  hasTimeEstimate: boolean
+  issueName: string
+  issueUrl: string
 }
 
 export interface GitLabQueryResponse {
@@ -76,7 +87,8 @@ import type React from 'react'
 export interface TableColumn {
   key: string
   title: string
-  render?: (value: unknown) => React.ReactNode
+  render?: (value: unknown, item?: TimeLog) => React.ReactNode
+  isIssueLevel?: boolean // Se true, mostra no nível da issue, não nos subItems
 }
 
 export interface TableMainKeyInfo {
