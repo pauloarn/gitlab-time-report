@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { useToast } from '@/components/ui/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { MonthPicker } from '@/components/ui/monthpicker'
@@ -46,6 +45,14 @@ export default function App() {
     }
   }, [handleTokenChange, isLoggedIn])
 
+  // Buscar dados automaticamente quando entrar na tela ou mudar o mês
+  useEffect(() => {
+    if (isLoggedIn && token) {
+      handleGenerateCSV()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, selectedDate])
+
   const handleEnter = () => {
     if (!token.trim()) {
       toast({
@@ -66,11 +73,6 @@ export default function App() {
 
   const handleGenerateCSV = async () => {
     if (!token) {
-      toast({
-        title: 'Erro',
-        description: 'Por favor, insira seu token do GitLab',
-        variant: 'destructive',
-      })
       return
     }
 
@@ -80,13 +82,13 @@ export default function App() {
       if (result.timeLogs.length) {
         const hasWarnings = result.validations.length > 0
         
-        toast({
-          title: hasWarnings ? 'Relatório gerado com avisos' : 'Sucesso!',
-          description: hasWarnings
-            ? `${result.validations.length} demanda(s) sem Weight ou Time Estimate`
-            : 'Relatório gerado com sucesso',
-          variant: hasWarnings ? 'default' : 'default',
-        })
+        if (hasWarnings) {
+          toast({
+            title: 'Relatório gerado com avisos',
+            description: `${result.validations.length} demanda(s) sem Weight ou Time Estimate`,
+            variant: 'default',
+          })
+        }
       } else {
         toast({
           title: 'Sem Registros',
@@ -125,39 +127,55 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
       <Header user={user} onLogout={handleLogout} />
       <div className="container mx-auto px-4 py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md mx-auto space-y-8"
-        >
-          <div className="bg-white p-6 rounded-xl shadow-lg space-y-6">
-            <div className="flex items-center justify-center space-x-4">
+        <div className="flex gap-8">
+          {/* Calendário à esquerda */}
+          <div className="flex-shrink-0">
+            <div className="bg-white p-6 rounded-xl shadow-lg sticky top-24">
               <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
+              {timeLogs.length > 0 && (
+                <div className="mt-6">
+                  <ReportActions
+                    loading={loading}
+                    hasData={timeLogs.length > 0}
+                    onDownload={handleDownloadCSV}
+                  />
+                </div>
+              )}
             </div>
-
-            <ReportActions
-              loading={loading}
-              hasData={timeLogs.length > 0}
-              onGenerate={handleGenerateCSV}
-              onDownload={handleDownloadCSV}
-            />
           </div>
-        </motion.div>
-      </div>
 
-      {validations.length > 0 && (
-        <div className="max-w-md mx-auto">
-          <IssueValidationAlert validations={validations} />
+          {/* Conteúdo à direita */}
+          <div className="flex-1 min-w-0">
+            {loading && (
+              <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                <p className="text-gray-600">Carregando dados...</p>
+              </div>
+            )}
+
+            {!loading && timeLogs.length === 0 && (
+              <div className="bg-white p-6 rounded-xl shadow-lg text-center">
+                <p className="text-gray-600">Nenhum registro encontrado para este mês</p>
+              </div>
+            )}
+
+            {validations.length > 0 && (
+              <div className="mb-6">
+                <IssueValidationAlert validations={validations} />
+              </div>
+            )}
+
+            {timeLogs.length > 0 && (
+              <ReportTabs
+                timeLogs={timeLogs}
+                totalTime={totalTime}
+                insights={insights}
+                selectedDate={selectedDate}
+                holidays={holidays}
+              />
+            )}
+          </div>
         </div>
-      )}
-
-      <ReportTabs
-        timeLogs={timeLogs}
-        totalTime={totalTime}
-        insights={insights}
-        selectedDate={selectedDate}
-        holidays={holidays}
-      />
+      </div>
 
       <Toaster />
     </div>
