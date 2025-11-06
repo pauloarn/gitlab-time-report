@@ -24,6 +24,10 @@ const CURRENT_USER_QUERY = gql`
   query CurrentUser {
     currentUser {
       id
+      username
+      name
+      avatarUrl
+      email
     }
   }
 `

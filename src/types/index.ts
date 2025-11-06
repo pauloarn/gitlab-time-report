@@ -41,6 +41,9 @@ export interface BusinessHoursInfo {
 export interface GitLabUser {
   id: string
   username?: string
+  name?: string
+  avatarUrl?: string
+  email?: string
 }
 
 export interface GitLabTimeLog {
