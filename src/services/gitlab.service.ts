@@ -43,6 +43,13 @@ const createTimeLogQuery = (userId: string, selectedDate: string) => {
           webUrl
           weight
           timeEstimate
+          iteration {
+            id
+            title
+            description
+            startDate
+            dueDate
+          }
           timelogs(first: 100) {
             count
             totalSpentTime
@@ -118,6 +125,13 @@ export class GitLabService {
           webUrl: node.webUrl,
           weight: node.weight,
           timeEstimate: node.timeEstimate,
+          iteration: node.iteration ? {
+            id: node.iteration.id,
+            title: node.iteration.title,
+            description: node.iteration.description || null,
+            startDate: node.iteration.startDate || null,
+            dueDate: node.iteration.dueDate || null,
+          } : null,
           dataTrack: [],
         }
 

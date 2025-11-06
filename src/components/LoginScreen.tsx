@@ -30,11 +30,12 @@ export function LoginScreen({
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800 flex items-center justify-center p-4 relative">
-      {/* Botão de toggle de tema no canto superior direito */}
+    <>
+      {/* Botão de toggle de tema no canto superior direito - fixed para sempre ficar no mesmo lugar */}
       <button
         onClick={toggleTheme}
-        className="absolute top-4 right-4 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 z-10"
+        style={{ position: 'fixed', top: '1rem', right: '1rem', zIndex: 50 }}
+        className="p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
         aria-label={theme === 'dark' ? 'Ativar modo claro' : 'Ativar modo escuro'}
       >
         {theme === 'dark' ? (
@@ -43,9 +44,15 @@ export function LoginScreen({
           <Moon className="h-5 w-5" />
         )}
       </button>
-      
-      {/* Logo posicionado no topo */}
-      <div className="absolute top-8 left-1/2 transform -translate-x-1/2">
+
+      <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800 flex items-center justify-center p-4">
+        <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="max-w-md w-full space-y-8"
+      >
+        {/* Logo */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -59,15 +66,14 @@ export function LoginScreen({
             className="w-80 h-80 object-contain"
           />
         </motion.div>
-      </div>
 
-      {/* Modal de token fixo no centro */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="max-w-md w-full bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg space-y-6"
-      >
+        {/* Modal de token */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white dark:bg-gray-800 p-8 rounded-xl shadow-lg space-y-6"
+        >
           <div className="space-y-2">
             <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block">
               Token de Acesso do GitLab
@@ -101,8 +107,10 @@ export function LoginScreen({
           >
             Entrar
           </Button>
+        </motion.div>
       </motion.div>
-    </div>
+      </div>
+    </>
   )
 }
 

@@ -11,6 +11,13 @@ export interface TimeLog {
   dataTrack: TimeLogEntry[]
   weight?: number | null
   timeEstimate?: number | null
+  iteration?: {
+    id: string
+    title: string
+    description?: string | null
+    startDate?: string | null
+    dueDate?: string | null
+  } | null
 }
 
 // Holiday Types
@@ -59,6 +66,13 @@ export interface GitLabIssue {
   webUrl: string
   weight?: number | null
   timeEstimate?: number | null
+  iteration?: {
+    id: string
+    title: string
+    description?: string | null
+    startDate?: string | null
+    dueDate?: string | null
+  } | null
   timelogs: {
     count: number
     totalSpentTime: number

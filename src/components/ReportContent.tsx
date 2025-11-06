@@ -75,6 +75,7 @@ export function ReportContent({
               webUrl: '',
               weight: hasAnyWeight ? totalWeight : null,
               timeEstimate: hasAnyTimeEstimate ? totalTimeEstimate : null,
+              iteration: null,
               dataTrack: [
                 { description: 'Total', timeLoggedInSeconds: totalTime, date: '' },
               ],
@@ -127,9 +128,23 @@ export function ReportContent({
               },
             },
             {
+              key: 'iteration',
+              title: 'Iteration',
+              isIssueLevel: true,
+              render: (_value: unknown, item?: TimeLog) => {
+                // Acessar diretamente do item para garantir que pegamos o objeto correto
+                const iteration = item?.iteration
+                if (!iteration || !iteration.title) {
+                  return <span className="text-gray-400 dark:text-gray-500">-</span>
+                }
+                return <span className="dark:text-gray-100">{iteration.title}</span>
+              },
+            },
+            {
               key: 'date',
               title: 'Data',
-              render: (data: string) => {
+              render: (value: unknown) => {
+                const data = value as string
                 if (data) {
                   return format(new Date(data), 'dd/MM/yyyy')
                 }
@@ -139,7 +154,9 @@ export function ReportContent({
             {
               key: 'timeLoggedInSeconds',
               title: 'Horas Trabalhadas',
-              render: convertTimeInHoursMinSec,
+              render: (value: unknown) => {
+                return convertTimeInHoursMinSec(value as number)
+              },
             },
           ]}
         />
