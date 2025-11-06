@@ -12,12 +12,16 @@ node_modules
 .pnp
 .pnp.js
 
+# Turborepo
+.turbo
+
 # Build outputs
 dist
 dist-ssr
 *.local
 build/
-*.lock
+package-lock.json
+yarn.lock
 
 # Editor directories and files
 .vscode/*

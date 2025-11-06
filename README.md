@@ -22,7 +22,7 @@ A web application for generating and visualizing time reports from GitLab.
 ### Prerequisites
 
 - Node.js 18 or newer
-- npm or yarn
+- pnpm (install with `npm install -g pnpm`)
 
 ### Development Setup
 
@@ -34,7 +34,7 @@ A web application for generating and visualizing time reports from GitLab.
 
 2. Install dependencies:
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. Create a `.env` file with your GitLab API token:
@@ -45,7 +45,7 @@ A web application for generating and visualizing time reports from GitLab.
 
 4. Start the development server:
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## Docker Setup
@@ -67,7 +67,7 @@ The application will be available at http://localhost:80
 ## Building for Production
 
 ```bash
-npm run build
+pnpm build
 ```
 
 The built files will be in the `dist` directory.
@@ -79,21 +79,24 @@ gitlab-time-report/
 ├── public/            # Static assets
 ├── src/
 │   ├── components/    # React components
+│   │   ├── ui/        # UI base components
+│   │   └── ...        # Feature components
 │   ├── hooks/         # Custom React hooks
 │   ├── lib/           # Utility functions
-│   ├── pages/         # Page components
-│   ├── graphql/       # GraphQL queries and mutations
-│   ├── styles/        # Global styles
+│   ├── services/      # API services
+│   ├── types/         # TypeScript type definitions
+│   ├── utils/         # Constants and helpers
 │   ├── App.tsx        # Main App component
 │   └── main.tsx       # Entry point
-├── .dockerignore      # Docker ignore file
+├── .eslintrc.json     # ESLint configuration
 ├── .gitignore         # Git ignore file
 ├── Dockerfile         # Docker configuration
 ├── index.html         # HTML entry point
 ├── package.json       # Dependencies and scripts
 ├── postcss.config.js  # PostCSS configuration
 ├── tailwind.config.js # Tailwind configuration
-└── vite.config.js     # Vite configuration
+├── tsconfig.json      # TypeScript configuration
+└── vite.config.ts     # Vite configuration
 ```
 
 ## License

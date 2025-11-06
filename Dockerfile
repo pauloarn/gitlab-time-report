@@ -10,17 +10,20 @@ FROM node:${NODE_VERSION} AS builder
 # Set the working directory inside the container
 WORKDIR /app
 
-# Copy package-related files first to leverage Docker's caching mechanism
-COPY package.json package-lock.json ./
+# Install pnpm globally
+RUN npm install -g pnpm
 
-# Install project dependencies using npm ci (ensures a clean, reproducible install)
-RUN --mount=type=cache,target=/root/.npm npm ci
+# Copy package-related files first to leverage Docker's caching mechanism
+COPY package.json pnpm-lock.yaml .npmrc ./
+
+# Install project dependencies using pnpm (ensures a clean, reproducible install)
+RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile
 
 # Copy the rest of the application source code into the container
 COPY . .
 
 # Build the React/Vite application (outputs to /app/dist)
-RUN npm run build
+RUN pnpm build
 
 # =========================================
 # Stage 2: Prepare Nginx to Serve Static Files
