@@ -3,7 +3,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { MonthPicker } from '@/components/ui/monthpicker'
 import { ReportActions } from '@/components/ReportActions'
-import { ReportTabs } from '@/components/ReportTabs'
+import { ReportContent } from '@/components/ReportContent'
 import { IssueValidationAlert } from '@/components/IssueValidationAlert'
 import { LoginScreen } from '@/components/LoginScreen'
 import { Header } from '@/components/Header'
@@ -30,6 +30,7 @@ export default function App() {
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   )
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<number>(0)
   const { toast } = useToast()
 
   const { data: holidays = [] } = useHolidays(selectedDate.getFullYear())
@@ -125,7 +126,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
-      <Header user={user} onLogout={handleLogout} />
+      <Header
+        user={user}
+        onLogout={handleLogout}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
       <div className="container mx-auto px-4 py-8">
         <div className="flex gap-8">
           {/* Calendário à esquerda */}
@@ -152,26 +158,25 @@ export default function App() {
               </div>
             )}
 
-            {!loading && timeLogs.length === 0 && (
-              <div className="bg-white p-6 rounded-xl shadow-lg text-center">
-                <p className="text-gray-600">Nenhum registro encontrado para este mês</p>
-              </div>
-            )}
+            {!loading && (
+              <>
+                {validations.length > 0 && (
+                  <div className="mb-6">
+                    <IssueValidationAlert validations={validations} />
+                  </div>
+                )}
 
-            {validations.length > 0 && (
-              <div className="mb-6">
-                <IssueValidationAlert validations={validations} />
-              </div>
-            )}
-
-            {timeLogs.length > 0 && (
-              <ReportTabs
-                timeLogs={timeLogs}
-                totalTime={totalTime}
-                insights={insights}
-                selectedDate={selectedDate}
-                holidays={holidays}
-              />
+                <div className="bg-white rounded-xl shadow-lg">
+                  <ReportContent
+                    activeTab={activeTab}
+                    timeLogs={timeLogs}
+                    totalTime={totalTime}
+                    insights={insights}
+                    selectedDate={selectedDate}
+                    holidays={holidays}
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>
