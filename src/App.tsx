@@ -7,6 +7,7 @@ import { ReportContent } from '@/components/ReportContent'
 import { IssueValidationAlert } from '@/components/IssueValidationAlert'
 import { LoginScreen } from '@/components/LoginScreen'
 import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
 import { useToken } from '@/hooks/useToken'
 import { useTimeLogs } from '@/hooks/useTimeLogs'
 import { useHolidays } from '@/hooks/useHolidays'
@@ -137,14 +138,14 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800 flex flex-col">
       <Header
         user={user}
         onLogout={handleLogout}
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 flex-1">
         {activeTab === 3 ? (
           // Aba Sprints - sem calendário
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
@@ -211,6 +212,7 @@ export default function App() {
         )}
       </div>
 
+      <Footer />
       <Toaster />
     </div>
   )

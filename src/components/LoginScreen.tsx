@@ -1,9 +1,13 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Eye, EyeOff, Moon, Sun } from 'lucide-react'
 import { useTheme } from '@/contexts/ThemeContext'
+import { TermsModal } from '@/components/TermsModal'
+import { TermsAcceptanceModal } from '@/components/TermsAcceptanceModal'
+
+const TERMS_ACCEPTED_KEY = 'gitlab-time-report-terms-accepted'
 
 interface LoginScreenProps {
   token: string
@@ -22,12 +26,48 @@ export function LoginScreen({
 }: LoginScreenProps) {
   const { theme, toggleTheme } = useTheme()
   const logoPath = theme === 'dark' ? '/black-git-horas-icon.png' : '/white-git-horas-icon.png'
+  const [showTermsModal, setShowTermsModal] = useState(false)
+  const [showAcceptanceModal, setShowAcceptanceModal] = useState(false)
+  const [termsAccepted, setTermsAccepted] = useState(false)
+  
+  useEffect(() => {
+    // Verificar se o usuário já aceitou os termos
+    const accepted = localStorage.getItem(TERMS_ACCEPTED_KEY) === 'true'
+    setTermsAccepted(accepted)
+  }, [])
   
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && token.trim()) {
-      onEnter()
+      handleEnterClick()
     }
   }
+
+  const handleEnterClick = () => {
+    if (!token.trim()) {
+      return
+    }
+
+    // Se já aceitou os termos, entrar diretamente
+    if (termsAccepted) {
+      onEnter()
+      return
+    }
+
+    // Se não aceitou, mostrar modal de aceite
+    setShowAcceptanceModal(true)
+  }
+
+  const handleAcceptTerms = () => {
+    localStorage.setItem(TERMS_ACCEPTED_KEY, 'true')
+    setTermsAccepted(true)
+    setShowAcceptanceModal(false)
+    onEnter()
+  }
+
+  const handleRejectTerms = () => {
+    setShowAcceptanceModal(false)
+  }
+
 
   return (
     <>
@@ -100,16 +140,33 @@ export function LoginScreen({
           </div>
 
           <Button
-            onClick={onEnter}
+            onClick={handleEnterClick}
             disabled={!token.trim()}
             className="w-full"
             size="lg"
           >
             Entrar
           </Button>
+
+          {/* Botão Termos de uso */}
+          <div className="text-center">
+            <button
+              onClick={() => setShowTermsModal(true)}
+              className="text-xs text-orange-600 dark:text-orange-400 hover:underline"
+            >
+              Termos de uso
+            </button>
+          </div>
         </motion.div>
       </motion.div>
       </div>
+
+      <TermsModal isOpen={showTermsModal} onClose={() => setShowTermsModal(false)} />
+      <TermsAcceptanceModal
+        isOpen={showAcceptanceModal}
+        onAccept={handleAcceptTerms}
+        onReject={handleRejectTerms}
+      />
     </>
   )
 }
