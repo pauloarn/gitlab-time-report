@@ -1,6 +1,9 @@
 import { format } from 'date-fns'
 import { convertTimeInHoursMinSec } from '@/lib/utils'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, ChevronDown, ChevronUp, User } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import rehypeRaw from 'rehype-raw'
+import { useState } from 'react'
 import type { Epic } from '@/types'
 
 interface SprintsContentProps {
@@ -12,8 +15,6 @@ interface SprintsContentProps {
   milestonesLoading: boolean
   selectedMilestoneTitle: string
   onMilestoneChange: (milestoneTitle: string) => void
-  selectedEpicId: string
-  onEpicChange: (epicId: string) => void
 }
 
 export function SprintsContent({
@@ -25,12 +26,22 @@ export function SprintsContent({
   milestonesLoading,
   selectedMilestoneTitle,
   onMilestoneChange,
-  selectedEpicId,
-  onEpicChange,
 }: SprintsContentProps) {
-  // Debug log
-  console.log('SprintsContent - épicos recebidos:', epics.length, epics)
-
+  // Estado para controlar quais descrições estão expandidas
+  const [expandedDescriptions, setExpandedDescriptions] = useState<Set<string>>(new Set())
+  
+  const toggleDescription = (id: string) => {
+    setExpandedDescriptions((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+  
   if (isLoading) {
     return (
       <div className="p-12 text-center">
@@ -65,10 +76,7 @@ export function SprintsContent({
           </label>
           <select
             value={selectedMilestoneTitle}
-            onChange={(e) => {
-              onMilestoneChange(e.target.value)
-              onEpicChange('') // Reset épico quando mudar milestone
-            }}
+            onChange={(e) => onMilestoneChange(e.target.value)}
             disabled={milestonesLoading || milestones.length === 0}
             className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -80,28 +88,6 @@ export function SprintsContent({
             ))}
           </select>
         </div>
-
-        {/* Filtro de Épico */}
-        {epics.length > 0 && (
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Filtrar por Épico
-            </label>
-            <select
-              value={selectedEpicId}
-              onChange={(e) => onEpicChange(e.target.value)}
-              disabled={isLoading || epics.length === 0}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400 focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">Todos os Épicos</option>
-              {epics.map((epic) => (
-                <option key={epic.id} value={epic.id}>
-                  {epic.title}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
       </div>
 
       {/* Mensagem quando não há épicos */}
@@ -113,21 +99,18 @@ export function SprintsContent({
         </div>
       )}
 
-      {/* Lista de Épicos */}
-      {epics.length > 0 && (
-        <div className="space-y-8">
-          {(selectedEpicId 
-            ? epics.filter((epic) => epic.id === selectedEpicId)
-            : epics
-          ).map((epic) => (
+            {/* Lista de Épicos */}
+            {epics.length > 0 && (
+              <div className="space-y-8">
+                {epics.map((epic) => (
         <div
           key={epic.id}
-          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden"
+          className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden bg-white dark:bg-gray-800"
         >
           {/* Header do Épico */}
           <div className="bg-orange-50 dark:bg-orange-900/20 px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   <a
                     href={epic.webUrl}
@@ -138,10 +121,138 @@ export function SprintsContent({
                     {epic.title}
                   </a>
                 </h3>
+                {epic.assignees && epic.assignees.length > 0 && (
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">Assignees:</span>
+                    {epic.assignees.map((assignee) => {
+                      const initials = assignee.name
+                        ? assignee.name
+                            .split(' ')
+                            .map((part) => part.charAt(0).toUpperCase())
+                            .slice(0, 2)
+                            .join('')
+                        : assignee.username
+                            .split(/[._-]/)
+                            .map((part) => part.charAt(0).toUpperCase())
+                            .slice(0, 2)
+                            .join('')
+                      
+                      return (
+                        <div
+                          key={assignee.id}
+                          className="flex items-center gap-1.5"
+                          title={assignee.name || assignee.username}
+                        >
+                          {assignee.avatarUrl ? (
+                            <img
+                              src={assignee.avatarUrl}
+                              alt={assignee.name || assignee.username}
+                              className="w-5 h-5 rounded-full object-cover"
+                              onError={(e) => {
+                                // Se a imagem falhar, mostrar inicial
+                                const target = e.target as HTMLImageElement
+                                target.style.display = 'none'
+                                const fallback = target.nextElementSibling as HTMLElement
+                                if (fallback) fallback.style.display = 'flex'
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className={`w-5 h-5 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${assignee.avatarUrl ? 'hidden' : ''}`}
+                          >
+                            {initials}
+                          </div>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            {assignee.name || assignee.username}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
                 {epic.description && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {epic.description}
-                  </p>
+                  <div className="mt-1">
+                    <button
+                      onClick={() => toggleDescription(`epic-${epic.id}`)}
+                      className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                    >
+                      {expandedDescriptions.has(`epic-${epic.id}`) ? (
+                        <>
+                          <ChevronUp className="w-4 h-4" />
+                          Ocultar descrição
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4" />
+                          Ver descrição
+                        </>
+                      )}
+                    </button>
+                    {expandedDescriptions.has(`epic-${epic.id}`) && (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mt-2 prose prose-sm dark:prose-invert max-w-none prose-img:max-w-full prose-img:rounded-lg">
+                        <ReactMarkdown
+                          rehypePlugins={[rehypeRaw]}
+                          components={{
+                            img: ({ src, alt }) => {
+                              // Converter URLs relativas de imagens do GitLab para absolutas
+                              if (src && !src.startsWith('http')) {
+                                // Se for uma imagem relativa do GitLab, construir URL completa
+                                const gitlabBaseUrl = epic.webUrl.split('/-/')[0]
+                                let imageUrl = src
+                                
+                                if (src.startsWith('/')) {
+                                  imageUrl = `https://gitlab.com${src}`
+                                } else if (src.includes('uploads/')) {
+                                  // Imagens enviadas diretamente no GitLab
+                                  imageUrl = `${gitlabBaseUrl}/${src}`
+                                } else {
+                                  // Tentar diferentes caminhos comuns do GitLab
+                                  // Primeiro tenta como wiki, depois como raw file
+                                  imageUrl = `${gitlabBaseUrl}/-/wikis/${src}`
+                                }
+                                
+                                return (
+                                  <img 
+                                    src={imageUrl} 
+                                    alt={alt} 
+                                    className="max-w-full rounded-lg my-2"
+                                    onError={(e) => {
+                                      // Se falhar, tentar como raw file
+                                      const target = e.target as HTMLImageElement
+                                      if (!src.startsWith('http') && !target.src.includes('/-/raw/')) {
+                                        const fallbackUrl = `${gitlabBaseUrl}/-/raw/main/${src}`
+                                        target.src = fallbackUrl
+                                      }
+                                    }}
+                                  />
+                                )
+                              }
+                              return <img src={src} alt={alt} className="max-w-full rounded-lg my-2" />
+                            },
+                            table: ({ children }) => (
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                                  {children}
+                                </table>
+                              </div>
+                            ),
+                            th: ({ children }) => (
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-left">
+                                {children}
+                              </th>
+                            ),
+                            td: ({ children }) => (
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-2">
+                                {children}
+                              </td>
+                            ),
+                          }}
+                        >
+                          {epic.description}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -168,9 +279,65 @@ export function SprintsContent({
                       </p>
                     )}
                     {sprint.description && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                        {sprint.description}
-                      </p>
+                      <div className="mt-1">
+                        <button
+                          onClick={() => toggleDescription(`sprint-${sprint.id}`)}
+                          className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                        >
+                          {expandedDescriptions.has(`sprint-${sprint.id}`) ? (
+                            <>
+                              <ChevronUp className="w-4 h-4" />
+                              Ocultar descrição
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="w-4 h-4" />
+                              Ver descrição
+                            </>
+                          )}
+                        </button>
+                        {expandedDescriptions.has(`sprint-${sprint.id}`) && (
+                          <div className="text-sm text-gray-600 dark:text-gray-400 mt-2 prose prose-sm dark:prose-invert max-w-none prose-img:max-w-full prose-img:rounded-lg">
+                            <ReactMarkdown
+                              rehypePlugins={[rehypeRaw]}
+                              components={{
+                                img: ({ src, alt }) => {
+                                  // Converter URLs relativas de imagens do GitLab para absolutas
+                                  if (src && !src.startsWith('http')) {
+                                    // Se for uma imagem relativa do GitLab, tentar construir URL completa
+                                    // Nota: sprint não tem webUrl, então usamos uma URL base genérica
+                                    const gitlabBaseUrl = 'https://gitlab.com'
+                                    const imageUrl = src.startsWith('/') 
+                                      ? `${gitlabBaseUrl}${src}`
+                                      : `${gitlabBaseUrl}/${src}`
+                                    return <img src={imageUrl} alt={alt} className="max-w-full rounded-lg" />
+                                  }
+                                  return <img src={src} alt={alt} className="max-w-full rounded-lg" />
+                                },
+                                table: ({ children }) => (
+                                  <div className="overflow-x-auto">
+                                    <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
+                                      {children}
+                                    </table>
+                                  </div>
+                                ),
+                                th: ({ children }) => (
+                                  <th className="border border-gray-300 dark:border-gray-600 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-left">
+                                    {children}
+                                  </th>
+                                ),
+                                td: ({ children }) => (
+                                  <td className="border border-gray-300 dark:border-gray-600 px-4 py-2">
+                                    {children}
+                                  </td>
+                                ),
+                              }}
+                            >
+                              {sprint.description}
+                            </ReactMarkdown>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -186,6 +353,9 @@ export function SprintsContent({
                           <tr className="border-b border-gray-200 dark:border-gray-700">
                             <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">
                               Task
+                            </th>
+                            <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">
+                              Assignees
                             </th>
                             <th className="text-left py-2 px-3 font-medium text-gray-700 dark:text-gray-300">
                               Estado
@@ -222,6 +392,61 @@ export function SprintsContent({
                                   >
                                     {issue.name}
                                   </a>
+                                </td>
+                                <td className="py-3 px-3">
+                                  {issue.assignees && issue.assignees.length > 0 ? (
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                      {issue.assignees.map((assignee) => {
+                                        const initials = assignee.name
+                                          ? assignee.name
+                                              .split(' ')
+                                              .map((part: string) => part.charAt(0).toUpperCase())
+                                              .slice(0, 2)
+                                              .join('')
+                                          : assignee.username
+                                              .split(/[._-]/)
+                                              .map((part: string) => part.charAt(0).toUpperCase())
+                                              .slice(0, 2)
+                                              .join('')
+                                        
+                                        return (
+                                          <div
+                                            key={assignee.id}
+                                            className="flex items-center gap-1.5"
+                                            title={assignee.name || assignee.username}
+                                          >
+                                            {assignee.avatarUrl ? (
+                                              <img
+                                                src={assignee.avatarUrl}
+                                                alt={assignee.name || assignee.username}
+                                                className="w-6 h-6 rounded-full object-cover"
+                                                onError={(e) => {
+                                                  // Se a imagem falhar, mostrar inicial
+                                                  const target = e.target as HTMLImageElement
+                                                  target.style.display = 'none'
+                                                  const fallback = target.nextElementSibling as HTMLElement
+                                                  if (fallback) fallback.style.display = 'flex'
+                                                }}
+                                              />
+                                            ) : null}
+                                            <div 
+                                              className={`w-6 h-6 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${assignee.avatarUrl ? 'hidden' : ''}`}
+                                            >
+                                              {initials}
+                                            </div>
+                                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                                              {assignee.name || assignee.username}
+                                            </span>
+                                          </div>
+                                        )
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1.5 text-gray-400 dark:text-gray-500">
+                                      <User className="w-4 h-4" />
+                                      <span className="text-xs">Sem assignee</span>
+                                    </div>
+                                  )}
                                 </td>
                                 <td className="py-3 px-3">
                                   <span

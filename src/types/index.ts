@@ -126,6 +126,12 @@ export interface Epic {
   webUrl: string
   description?: string | null
   sprints: Sprint[]
+  assignees?: Array<{
+    id: string
+    username: string
+    avatarUrl?: string | null
+    name?: string | null
+  }>
 }
 
 export interface Sprint {
@@ -146,6 +152,12 @@ export interface SprintIssue {
   state: string
   totalSpentTime: number
   timelogs: TimeLogEntry[]
+  assignees?: Array<{
+    id: string
+    username: string
+    avatarUrl?: string | null
+    name?: string | null
+  }>
 }
 
 

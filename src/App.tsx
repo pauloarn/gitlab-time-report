@@ -34,7 +34,6 @@ export default function App() {
   )
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<number>(0)
-  const [selectedEpicId, setSelectedEpicId] = useState<string>('')
   const [selectedMilestoneTitle, setSelectedMilestoneTitle] = useState<string>('')
   const { toast } = useToast()
 
@@ -157,12 +156,7 @@ export default function App() {
               milestones={milestones as Array<{ id: string; title: string; webPath: string }>}
               milestonesLoading={milestonesLoading}
               selectedMilestoneTitle={selectedMilestoneTitle}
-              onMilestoneChange={(milestoneTitle) => {
-                setSelectedMilestoneTitle(milestoneTitle)
-                setSelectedEpicId('') // Reset épico quando mudar milestone
-              }}
-              selectedEpicId={selectedEpicId}
-              onEpicChange={setSelectedEpicId}
+              onMilestoneChange={setSelectedMilestoneTitle}
             />
           </div>
         ) : (

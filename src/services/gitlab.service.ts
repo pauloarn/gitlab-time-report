@@ -152,6 +152,16 @@ const createEpicsQuery = (groupId: string) => {
                   nodes {
                     id
                     username
+                    avatarUrl
+                    name
+                  }
+                }
+                participants {
+                  nodes {
+                    id
+                    username
+                    avatarUrl
+                    name
                   }
                 }
                 iteration {
@@ -386,6 +396,130 @@ export class GitLabService {
     return textData.join('')
   }
 
+  async getEpicParticipants(groupId: string, epicIid: string): Promise<Array<{ id: string; username: string; avatarUrl: string | null; name: string | null }>> {
+    try {
+      const response = await this.client.query<{
+        workspace: {
+          workItem: {
+            author: {
+              id: string
+              username: string
+              avatarUrl?: string | null
+              name?: string | null
+            }
+            widgets: Array<{
+              type: string
+              assignees?: {
+                nodes: Array<{
+                  id: string
+                  username: string
+                  avatarUrl?: string | null
+                  name?: string | null
+                }>
+              }
+              participants?: {
+                nodes: Array<{
+                  id: string
+                  username: string
+                  avatarUrl?: string | null
+                  name?: string | null
+                }>
+              }
+            }>
+          }
+        }
+      }>({
+        query: gql`
+          query GetEpicParticipants($fullPath: ID!, $iid: String!) {
+            workspace: namespace(fullPath: $fullPath) {
+              workItem(iid: $iid) {
+                author {
+                  id
+                  username
+                  avatarUrl
+                  name
+                }
+                widgets(onlyTypes: [ASSIGNEES, PARTICIPANTS]) {
+                  type
+                  ... on WorkItemWidgetAssignees {
+                    assignees {
+                      nodes {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                    }
+                  }
+                  ... on WorkItemWidgetParticipants {
+                    participants {
+                      nodes {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          fullPath: groupId,
+          iid: epicIid,
+        },
+        fetchPolicy: 'no-cache',
+      })
+
+      const authorId = response.data.workspace.workItem.author?.id
+      const participantsMap = new Map<string, { id: string; username: string; avatarUrl: string | null; name: string | null }>()
+
+      // Buscar assignees do épico (excluindo o autor)
+      const assigneesWidget = response.data.workspace.workItem.widgets.find(
+        (w) => w.type === 'ASSIGNEES'
+      ) as { assignees?: { nodes: Array<{ id: string; username: string; avatarUrl?: string | null; name?: string | null }> } } | undefined
+
+      if (assigneesWidget?.assignees?.nodes) {
+        assigneesWidget.assignees.nodes.forEach((assignee) => {
+          // Excluir o autor/criador do épico
+          if (assignee.id !== authorId && !participantsMap.has(assignee.id)) {
+            participantsMap.set(assignee.id, {
+              id: assignee.id,
+              username: assignee.username,
+              avatarUrl: assignee.avatarUrl || null,
+              name: assignee.name || null,
+            })
+          }
+        })
+      }
+
+      // Buscar participants do épico (excluindo o autor)
+      const participantsWidget = response.data.workspace.workItem.widgets.find(
+        (w) => w.type === 'PARTICIPANTS'
+      ) as { participants?: { nodes: Array<{ id: string; username: string; avatarUrl?: string | null; name?: string | null }> } } | undefined
+
+      if (participantsWidget?.participants?.nodes) {
+        participantsWidget.participants.nodes.forEach((participant) => {
+          // Excluir o autor/criador do épico
+          if (participant.id !== authorId && !participantsMap.has(participant.id)) {
+            participantsMap.set(participant.id, {
+              id: participant.id,
+              username: participant.username,
+              avatarUrl: participant.avatarUrl || null,
+              name: participant.name || null,
+            })
+          }
+        })
+      }
+
+      return Array.from(participantsMap.values())
+    } catch {
+      return []
+    }
+  }
+
   async getMilestones(groupId: string, search?: string): Promise<Array<{ id: string; title: string; webPath: string }>> {
     try {
       const searchFilter = search ? `searchTitle: "${search}", ` : ''
@@ -449,13 +583,11 @@ export class GitLabService {
       // Sempre tentar buscar do grupo principal primeiro
       const primaryGroup = 'projectengine-team'
       try {
-        console.log(`Buscando épicos do grupo principal: ${primaryGroup}${milestoneTitle ? ` (milestone: ${milestoneTitle})` : ''}`)
         const primaryEpics = await this.getSprintsByGroup(primaryGroup, user.id, milestoneTitle)
-        console.log(`Encontrados ${primaryEpics.length} épicos no grupo ${primaryGroup}`)
         allEpics.push(...primaryEpics)
         processedGroups.add(primaryGroup)
-      } catch (error) {
-        console.error(`Erro ao buscar épicos do grupo principal ${primaryGroup}:`, error)
+      } catch {
+        // Continuar mesmo se houver erro no grupo principal
       }
       
       // Buscar épicos de todos os grupos encontrados (exceto o principal se já foi processado)
@@ -465,16 +597,14 @@ export class GitLabService {
             const groupEpics = await this.getSprintsByGroup(group.fullPath, user.id, milestoneTitle)
             allEpics.push(...groupEpics)
             processedGroups.add(group.fullPath)
-          } catch (error) {
+          } catch {
             // Continuar mesmo se um grupo falhar
-            console.warn(`Erro ao buscar épicos do grupo ${group.name} (${group.fullPath}):`, error)
           }
         }
       }
 
       // Ordenar épicos por título
       const sortedEpics = allEpics.sort((a, b) => a.title.localeCompare(b.title))
-      console.log(`Total de épicos retornados (todos os grupos): ${sortedEpics.length}`)
       return sortedEpics
     } catch (error) {
       throw new Error(
@@ -507,6 +637,16 @@ export class GitLabService {
                   nodes: Array<{
                     id: string
                     username: string
+                    avatarUrl?: string | null
+                    name?: string | null
+                  }>
+                }
+                participants?: {
+                  nodes: Array<{
+                    id: string
+                    username: string
+                    avatarUrl?: string | null
+                    name?: string | null
                   }>
                 }
                 iteration?: {
@@ -537,6 +677,311 @@ export class GitLabService {
       let hasNextPage = true
       let cursor: string | null = null
 
+      // Primeiro, buscar épicos usando namespace.workItems (mais eficiente, retorna assignees diretamente)
+      // Usar webUrl como chave para fazer match com group.epics (já que os IDs são diferentes)
+      const epicWorkItemsMap = new Map<string, {
+        id: string
+        workItemId: string
+        iid: string
+        title: string
+        webUrl: string
+        authorId: string
+        assignees: Array<{ id: string; username: string; avatarUrl: string | null; name: string | null }>
+      }>()
+
+      let workItemsHasNextPage = true
+      let workItemsCursor: string | null = null
+
+      while (workItemsHasNextPage) {
+        let workItemsQuery: ReturnType<typeof gql>
+        
+        // Usar variáveis do GraphQL para milestoneTitle ao invés de interpolação
+        if (workItemsCursor) {
+          if (milestoneTitle) {
+            workItemsQuery = gql`
+              query GetEpics($fullPath: ID!, $milestoneTitle: [String!], $after: String) {
+                namespace(fullPath: $fullPath) {
+                  workItems(
+                    types: [EPIC]
+                    state: opened
+                    milestoneTitle: $milestoneTitle
+                    after: $after
+                    first: 100
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      iid
+                      title
+                      webUrl
+                      author {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                      widgets(onlyTypes: [ASSIGNEES]) {
+                        type
+                        ... on WorkItemWidgetAssignees {
+                          assignees {
+                            nodes {
+                              id
+                              username
+                              avatarUrl
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `
+          } else {
+            workItemsQuery = gql`
+              query GetEpics($fullPath: ID!, $after: String) {
+                namespace(fullPath: $fullPath) {
+                  workItems(
+                    types: [EPIC]
+                    state: opened
+                    after: $after
+                    first: 100
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      iid
+                      title
+                      webUrl
+                      author {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                      widgets(onlyTypes: [ASSIGNEES]) {
+                        type
+                        ... on WorkItemWidgetAssignees {
+                          assignees {
+                            nodes {
+                              id
+                              username
+                              avatarUrl
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `
+          }
+        } else {
+          if (milestoneTitle) {
+            workItemsQuery = gql`
+              query GetEpics($fullPath: ID!, $milestoneTitle: [String!]) {
+                namespace(fullPath: $fullPath) {
+                  workItems(
+                    types: [EPIC]
+                    state: opened
+                    milestoneTitle: $milestoneTitle
+                    first: 100
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      iid
+                      title
+                      webUrl
+                      author {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                      widgets(onlyTypes: [ASSIGNEES]) {
+                        type
+                        ... on WorkItemWidgetAssignees {
+                          assignees {
+                            nodes {
+                              id
+                              username
+                              avatarUrl
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `
+          } else {
+            workItemsQuery = gql`
+              query GetEpics($fullPath: ID!) {
+                namespace(fullPath: $fullPath) {
+                  workItems(
+                    types: [EPIC]
+                    state: opened
+                    first: 100
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      iid
+                      title
+                      webUrl
+                      author {
+                        id
+                        username
+                        avatarUrl
+                        name
+                      }
+                      widgets(onlyTypes: [ASSIGNEES]) {
+                        type
+                        ... on WorkItemWidgetAssignees {
+                          assignees {
+                            nodes {
+                              id
+                              username
+                              avatarUrl
+                              name
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            `
+          }
+        }
+
+        const queryVariables: { fullPath: string; milestoneTitle?: string[]; after?: string } = {
+          fullPath: groupId,
+        }
+        
+        if (milestoneTitle) {
+          queryVariables.milestoneTitle = [milestoneTitle]
+        }
+        
+        if (workItemsCursor) {
+          queryVariables.after = workItemsCursor
+        }
+
+        const workItemsResponse = await this.client.query<{
+          namespace: {
+            workItems: {
+              pageInfo: {
+                hasNextPage: boolean
+                endCursor: string
+              }
+              nodes: Array<{
+                id: string
+                iid: string
+                title: string
+                webUrl: string
+                author: {
+                  id: string
+                  username: string
+                  avatarUrl?: string | null
+                  name?: string | null
+                }
+                widgets: Array<{
+                  type: string
+                  assignees?: {
+                    nodes: Array<{
+                      id: string
+                      username: string
+                      avatarUrl?: string | null
+                      name?: string | null
+                    }>
+                  }
+                }>
+              }>
+            }
+          }
+        }>({
+          query: workItemsQuery,
+          variables: queryVariables,
+          fetchPolicy: 'no-cache',
+        })
+
+        if (!workItemsResponse.data?.namespace) {
+          throw new Error(`Namespace "${groupId}" não encontrado ou sem permissão de acesso.`)
+        }
+
+        const workItemNodes = workItemsResponse.data.namespace.workItems.nodes || []
+        workItemNodes.forEach((workItem: {
+          id: string
+          iid: string
+          title: string
+          webUrl: string
+          author: {
+            id: string
+            username: string
+            avatarUrl?: string | null
+            name?: string | null
+          }
+          widgets: Array<{
+            type: string
+            assignees?: {
+              nodes: Array<{
+                id: string
+                username: string
+                avatarUrl?: string | null
+                name?: string | null
+              }>
+            }
+          }>
+        }) => {
+          const assigneesWidget = workItem.widgets.find((w: { type: string }) => w.type === 'ASSIGNEES') as { assignees?: { nodes: Array<{ id: string; username: string; avatarUrl?: string | null; name?: string | null }> } } | undefined
+          const assignees = assigneesWidget?.assignees?.nodes || []
+          
+          // Excluir o autor dos assignees
+          const epicAssignees = assignees
+            .filter(a => a.id !== workItem.author.id)
+            .map(a => ({
+              id: a.id,
+              username: a.username,
+              avatarUrl: a.avatarUrl || null,
+              name: a.name || null,
+            }))
+
+          // Usar webUrl como chave para fazer match com group.epics
+          epicWorkItemsMap.set(workItem.webUrl, {
+            id: workItem.id,
+            workItemId: workItem.id,
+            iid: workItem.iid,
+            title: workItem.title,
+            webUrl: workItem.webUrl,
+            authorId: workItem.author.id,
+            assignees: epicAssignees,
+          })
+        })
+
+        workItemsHasNextPage = workItemsResponse.data.namespace.workItems.pageInfo?.hasNextPage || false
+        workItemsCursor = workItemsResponse.data.namespace.workItems.pageInfo?.endCursor || null
+      }
+
+      // Agora buscar as issues de cada épico usando group.epics
       // Buscar todos os épicos com paginação
       while (hasNextPage) {
         let epicQuery: ReturnType<typeof gql>
@@ -572,6 +1017,16 @@ export class GitLabService {
                           nodes {
                             id
                             username
+                            avatarUrl
+                            name
+                          }
+                        }
+                        participants {
+                          nodes {
+                            id
+                            username
+                            avatarUrl
+                            name
                           }
                         }
                         iteration {
@@ -638,6 +1093,16 @@ export class GitLabService {
                       nodes: Array<{
                         id: string
                         username: string
+                        avatarUrl?: string | null
+                        name?: string | null
+                      }>
+                    }
+                    participants?: {
+                      nodes: Array<{
+                        id: string
+                        username: string
+                        avatarUrl?: string | null
+                        name?: string | null
                       }>
                     }
                     iteration?: {
@@ -680,7 +1145,6 @@ export class GitLabService {
         }
 
         const epicNodes = response.data.group.epics.nodes || []
-        console.log(`Grupo ${groupId}: encontrados ${epicNodes.length} épicos nesta página`)
         allEpicNodes.push(...epicNodes)
 
         // Verificar se há mais páginas
@@ -688,41 +1152,32 @@ export class GitLabService {
         cursor = response.data.group.epics.pageInfo?.endCursor || null
       }
 
-      console.log(`Total de épicos encontrados no grupo ${groupId}: ${allEpicNodes.length}`)
-
       const epics: Epic[] = []
-
+      
       allEpicNodes.forEach((epic) => {
+        // Verificar se o épico está no mapa de workItems (filtrado por milestone)
+        // Usar webUrl para fazer match, já que os IDs são diferentes (WorkItem vs Epic)
+        const epicWorkItem = epicWorkItemsMap.get(epic.webUrl)
+        
+        if (milestoneTitle && !epicWorkItem) {
+          // Com filtro de milestone, pular épicos que não estão no mapa
+          return
+        }
+
         // Mostrar todas as issues, não apenas as atribuídas ao usuário
-        let allIssues = epic.issues.nodes
+        const allEpicIssues = epic.issues.nodes // Todas as issues do épico (para assignees)
+        let allIssues = allEpicIssues // Issues filtradas (para sprints)
 
         // Filtrar por milestone se especificado
         if (milestoneTitle) {
           allIssues = allIssues.filter((issue) => 
             issue.milestone?.title === milestoneTitle
           )
-          
+
           // Se não houver issues com o milestone, pular este épico
           if (allIssues.length === 0) {
             return
           }
-        }
-
-        // Verificar se o usuário participa deste épico
-        // (tem issues atribuídas ou tem timelogs)
-        const userParticipates = allIssues.some((issue) => {
-          // Verificar se o usuário é assignee
-          const isAssignee = issue.assignees.nodes.some((assignee) => assignee.id === userId)
-          
-          // Verificar se o usuário tem timelogs nesta issue
-          const hasTimelogs = issue.timelogs.nodes.some((tl) => tl.user.id === userId)
-          
-          return isAssignee || hasTimelogs
-        })
-
-        // Se o usuário não participa, pular este épico
-        if (!userParticipates) {
-          return
         }
 
         // Agrupar todas as issues por sprint
@@ -751,6 +1206,13 @@ export class GitLabService {
                 description: tl.summary,
                 date: tl.spentAt,
               })),
+            // Incluir assignees
+            assignees: issue.assignees.nodes.map((assignee) => ({
+              id: assignee.id,
+              username: assignee.username,
+              avatarUrl: assignee.avatarUrl || null,
+              name: assignee.name || null,
+            })),
           }
 
           sprintsMap.get(sprintId)!.push(sprintIssue)
@@ -780,18 +1242,64 @@ export class GitLabService {
           return new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
         })
 
+        // Agregar assignees e participants únicos de TODAS as issues do épico (não apenas as filtradas)
+        // Começar com os assignees diretos do épico (via workItems)
+        const allAssignees = new Map<string, { id: string; username: string; avatarUrl: string | null; name: string | null }>()
+        const assigneesSet = new Set<string>()
+        const participantsSet = new Set<string>()
+        
+        // Adicionar assignees diretos do épico (já excluindo o autor) se disponível
+        if (epicWorkItem) {
+          epicWorkItem.assignees.forEach((assignee) => {
+            assigneesSet.add(assignee.id)
+            allAssignees.set(assignee.id, assignee)
+          })
+        }
+        
+        allEpicIssues.forEach((issue) => {
+          // Adicionar assignees das issues
+          if (issue.assignees && issue.assignees.nodes) {
+            issue.assignees.nodes.forEach((assignee) => {
+              assigneesSet.add(assignee.id)
+              if (!allAssignees.has(assignee.id)) {
+                allAssignees.set(assignee.id, {
+                  id: assignee.id,
+                  username: assignee.username,
+                  avatarUrl: assignee.avatarUrl || null,
+                  name: assignee.name || null,
+                })
+              }
+            })
+          }
+          // Adicionar participants das issues
+          if (issue.participants && issue.participants.nodes) {
+            issue.participants.nodes.forEach((participant) => {
+              participantsSet.add(participant.id)
+              if (!allAssignees.has(participant.id)) {
+                allAssignees.set(participant.id, {
+                  id: participant.id,
+                  username: participant.username,
+                  avatarUrl: participant.avatarUrl || null,
+                  name: participant.name || null,
+                })
+              }
+            })
+          }
+        })
+        const epicAssignees = Array.from(allAssignees.values())
+
         epics.push({
           id: epic.id,
           title: epic.title,
           webUrl: epic.webUrl,
           description: epic.description || null,
           sprints,
+          assignees: epicAssignees,
         })
       })
 
       // Ordenar épicos por título
       const sortedEpics = epics.sort((a, b) => a.title.localeCompare(b.title))
-      console.log(`Épicos processados e retornados do grupo ${groupId}: ${sortedEpics.length}`)
       return sortedEpics
     } catch (error) {
       throw new Error(
