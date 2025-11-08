@@ -1,0 +1,19 @@
+{
+  "name": "Git Horas",
+  "short_name": "Git Horas",
+  "description": "Gere relatórios detalhados de horas trabalhadas do GitLab",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/git-horas-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
+

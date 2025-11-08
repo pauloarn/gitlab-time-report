@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { useToast } from '@/components/ui/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { MonthPicker } from '@/components/ui/monthpicker'
-import { TokenInput } from '@/components/TokenInput'
 import { ReportActions } from '@/components/ReportActions'
-import { ReportTabs } from '@/components/ReportTabs'
+import { ReportContent } from '@/components/ReportContent'
 import { IssueValidationAlert } from '@/components/IssueValidationAlert'
+import { LoginScreen } from '@/components/LoginScreen'
+import { Header } from '@/components/Header'
+import { Footer } from '@/components/Footer'
 import { useToken } from '@/hooks/useToken'
 import { useTimeLogs } from '@/hooks/useTimeLogs'
 import { useHolidays } from '@/hooks/useHolidays'
+import { useUser } from '@/hooks/useUser'
+import { useSprints, useMilestones } from '@/hooks/useSprints'
 import { TOKEN_STORAGE_KEY } from '@/utils/constants'
+import { SprintsContent } from '@/components/SprintsContent'
+import type { Epic } from '@/types'
 
 export default function App() {
   const { token, showToken, handleTokenChange, handleClearToken, toggleTokenVisibility } =
@@ -23,28 +28,65 @@ export default function App() {
     loading,
     generateReport,
     downloadCSV,
+    reset,
   } = useTimeLogs()
   const [selectedDate, setSelectedDate] = useState<Date>(
     new Date(new Date().getFullYear(), new Date().getMonth(), 1)
   )
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
+  const [activeTab, setActiveTab] = useState<number>(0)
+  const [selectedMilestoneTitle, setSelectedMilestoneTitle] = useState<string>('')
   const { toast } = useToast()
 
   const { data: holidays = [] } = useHolidays(selectedDate.getFullYear())
+  const { user } = useUser(isLoggedIn ? token : null)
+  const { epics = [], isLoading: sprintsLoading, isError: sprintsError, error: sprintsErrorDetail } = useSprints(
+    isLoggedIn && activeTab === 3 ? token : null,
+    selectedMilestoneTitle || undefined
+  )
+  const { milestones = [], isLoading: milestonesLoading } = useMilestones(
+    isLoggedIn && activeTab === 3 ? token : null,
+    'projectengine-team'
+  )
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
-    if (savedToken) {
-      handleTokenChange({ target: { value: savedToken } } as React.ChangeEvent<HTMLInputElement>)
+    // Carregar token salvo apenas se não estiver logado
+    if (!isLoggedIn) {
+      const savedToken = localStorage.getItem(TOKEN_STORAGE_KEY)
+      if (savedToken) {
+        handleTokenChange({ target: { value: savedToken } } as React.ChangeEvent<HTMLInputElement>)
+      }
     }
-  }, [handleTokenChange])
+  }, [handleTokenChange, isLoggedIn])
 
-  const handleGenerateCSV = async () => {
-    if (!token) {
+  // Buscar dados automaticamente quando entrar na tela ou mudar o mês (apenas para abas que usam data)
+  useEffect(() => {
+    if (isLoggedIn && token && activeTab !== 3) {
+      handleGenerateCSV()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, selectedDate, activeTab])
+
+  const handleEnter = () => {
+    if (!token.trim()) {
       toast({
         title: 'Erro',
         description: 'Por favor, insira seu token do GitLab',
         variant: 'destructive',
       })
+      return
+    }
+    setIsLoggedIn(true)
+  }
+
+  const handleLogout = () => {
+    handleClearToken()
+    reset()
+    setIsLoggedIn(false)
+  }
+
+  const handleGenerateCSV = async () => {
+    if (!token) {
       return
     }
 
@@ -54,13 +96,13 @@ export default function App() {
       if (result.timeLogs.length) {
         const hasWarnings = result.validations.length > 0
         
-        toast({
-          title: hasWarnings ? 'Relatório gerado com avisos' : 'Sucesso!',
-          description: hasWarnings
-            ? `${result.validations.length} demanda(s) sem Weight ou Time Estimate`
-            : 'Relatório gerado com sucesso',
-          variant: hasWarnings ? 'default' : 'default',
-        })
+        if (hasWarnings) {
+          toast({
+            title: 'Relatório gerado com avisos',
+            description: `${result.validations.length} demanda(s) sem Weight ou Time Estimate`,
+            variant: 'default',
+          })
+        }
       } else {
         toast({
           title: 'Sem Registros',
@@ -80,62 +122,97 @@ export default function App() {
     downloadCSV(selectedDate)
   }
 
+  if (!isLoggedIn) {
+    return (
+      <>
+        <LoginScreen
+          token={token}
+          showToken={showToken}
+          onTokenChange={handleTokenChange}
+          onToggleVisibility={toggleTokenVisibility}
+          onEnter={handleEnter}
+        />
+        <Toaster />
+      </>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white p-1">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md mx-auto space-y-8"
-      >
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold text-blue-600">Git Horas</h1>
-          <p className="text-gray-600">
-            Gere relatórios detalhados de horas trabalhadas do GitLab
-          </p>
-        </div>
-
-        <div className="bg-white p-6 rounded-xl shadow-lg space-y-6">
-          <TokenInput
-            token={token}
-            showToken={showToken}
-            onTokenChange={handleTokenChange}
-            onClearToken={handleClearToken}
-            onToggleVisibility={toggleTokenVisibility}
-          />
-
-          <div className="flex items-center justify-center space-x-4">
-            <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
-          </div>
-
-          <ReportActions
-            loading={loading}
-            hasData={timeLogs.length > 0}
-            onGenerate={handleGenerateCSV}
-            onDownload={handleDownloadCSV}
-          />
-        </div>
-
-        <div className="text-center space-y-2">
-          <p className="text-sm text-gray-500">
-            Seus dados são processados localmente e com segurança
-          </p>
-        </div>
-      </motion.div>
-
-      {validations.length > 0 && (
-        <div className="max-w-md mx-auto">
-          <IssueValidationAlert validations={validations} />
-        </div>
-      )}
-
-      <ReportTabs
-        timeLogs={timeLogs}
-        totalTime={totalTime}
-        insights={insights}
-        selectedDate={selectedDate}
-        holidays={holidays}
+    <div className="min-h-screen bg-gradient-to-b from-orange-50 dark:from-gray-900 to-white dark:to-gray-800 flex flex-col">
+      <Header
+        user={user}
+        onLogout={handleLogout}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
       />
+      <div className="container mx-auto px-4 py-8 flex-1">
+        {activeTab === 3 ? (
+          // Aba Sprints - sem calendário
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+            <SprintsContent
+              epics={epics as Epic[]}
+              isLoading={sprintsLoading}
+              isError={sprintsError}
+              error={sprintsErrorDetail}
+              milestones={milestones as Array<{ id: string; title: string; webPath: string }>}
+              milestonesLoading={milestonesLoading}
+              selectedMilestoneTitle={selectedMilestoneTitle}
+              onMilestoneChange={setSelectedMilestoneTitle}
+            />
+          </div>
+        ) : (
+          // Abas Geral, Insights, Horas Úteis - com calendário
+          <div className="flex gap-8">
+            {/* Calendário à esquerda */}
+            <div className="flex-shrink-0">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg sticky top-24">
+                <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
+                {timeLogs.length > 0 && (
+                  <div className="mt-6">
+                    <ReportActions
+                      loading={loading}
+                      hasData={timeLogs.length > 0}
+                      onDownload={handleDownloadCSV}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
 
+            {/* Conteúdo à direita */}
+            <div className="flex-1 min-w-0">
+              {loading && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
+                  <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
+                </div>
+              )}
+
+              {!loading && (
+                <>
+                  {validations.length > 0 && (
+                    <div className="mb-6">
+                      <IssueValidationAlert validations={validations} />
+                    </div>
+                  )}
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                    <ReportContent
+                      activeTab={activeTab}
+                      timeLogs={timeLogs}
+                      totalTime={totalTime}
+                      insights={insights}
+                      selectedDate={selectedDate}
+                      holidays={holidays}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <Footer />
       <Toaster />
     </div>
   )

@@ -1,7 +1,7 @@
 // Service Worker for GitLab Time Report PWA
-const CACHE_NAME = 'gitlab-time-report-v1';
-const STATIC_CACHE = 'gitlab-time-report-static-v1';
-const DYNAMIC_CACHE = 'gitlab-time-report-dynamic-v1';
+const CACHE_NAME = 'gitlab-time-report-v2';
+const STATIC_CACHE = 'gitlab-time-report-static-v2';
+const DYNAMIC_CACHE = 'gitlab-time-report-dynamic-v2';
 
 // Files to cache immediately
 const STATIC_FILES = [
@@ -16,11 +16,9 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
-        console.log('Caching static files');
         return cache.addAll(STATIC_FILES);
       })
       .then(() => {
-        console.log('Service Worker installed');
         return self.skipWaiting();
       })
   );
@@ -34,18 +32,43 @@ self.addEventListener('activate', (event) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
             if (cacheName !== STATIC_CACHE && cacheName !== DYNAMIC_CACHE) {
-              console.log('Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             }
           })
         );
       })
       .then(() => {
-        console.log('Service Worker activated');
         return self.clients.claim();
       })
   );
 });
+
+// Check if request URL is cacheable
+function isCacheableRequest(url) {
+  // Only cache HTTP/HTTPS requests
+  const scheme = url.protocol;
+  if (scheme !== 'http:' && scheme !== 'https:') {
+    return false;
+  }
+  
+  // Skip chrome-extension, moz-extension, edge, etc.
+  const href = url.href.toLowerCase();
+  if (href.startsWith('chrome-extension://') || 
+      href.startsWith('moz-extension://') ||
+      href.startsWith('edge://') ||
+      href.startsWith('safari-extension://') ||
+      href.startsWith('opera-extension://')) {
+    return false;
+  }
+  
+  // Only cache same-origin or CORS-enabled requests
+  // Skip data: URLs, blob: URLs, etc.
+  if (scheme === 'data:' || scheme === 'blob:' || scheme === 'file:') {
+    return false;
+  }
+  
+  return true;
+}
 
 // Fetch event - serve from cache or network
 self.addEventListener('fetch', (event) => {
@@ -54,6 +77,11 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests
   if (request.method !== 'GET') {
+    return;
+  }
+
+  // Skip non-cacheable requests (extensions, etc.)
+  if (!isCacheableRequest(url)) {
     return;
   }
 
@@ -79,12 +107,14 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Cache successful responses
-        if (response.status === 200) {
+        // Cache successful responses (only if cacheable)
+        if (response.status === 200 && isCacheableRequest(url)) {
           const responseClone = response.clone();
           caches.open(DYNAMIC_CACHE)
             .then((cache) => {
-              cache.put(request, responseClone);
+              cache.put(request, responseClone).catch(() => {
+                // Silently fail if cache.put fails (e.g., for unsupported schemes)
+              });
             });
         }
         return response;
@@ -98,14 +128,18 @@ self.addEventListener('fetch', (event) => {
 
 // Handle API requests with network-first strategy
 async function handleApiRequest(request) {
+  const url = new URL(request.url);
+  
   try {
     const response = await fetch(request);
     
-    // Cache successful API responses for 5 minutes
-    if (response.status === 200) {
+    // Cache successful API responses for 5 minutes (only if cacheable)
+    if (response.status === 200 && isCacheableRequest(url)) {
       const responseClone = response.clone();
       const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, responseClone);
+      cache.put(request, responseClone).catch(() => {
+        // Silently fail if cache.put fails
+      });
     }
     
     return response;
@@ -129,6 +163,7 @@ async function handleApiRequest(request) {
 
 // Handle static assets with cache-first strategy
 async function handleStaticAsset(request) {
+  const url = new URL(request.url);
   const cachedResponse = await caches.match(request);
   
   if (cachedResponse) {
@@ -137,10 +172,12 @@ async function handleStaticAsset(request) {
   
   try {
     const response = await fetch(request);
-    if (response.status === 200) {
+    if (response.status === 200 && isCacheableRequest(url)) {
       const responseClone = response.clone();
       const cache = await caches.open(STATIC_CACHE);
-      cache.put(request, responseClone);
+      cache.put(request, responseClone).catch(() => {
+        // Silently fail if cache.put fails
+      });
     }
     return response;
   } catch (error) {
@@ -150,14 +187,18 @@ async function handleStaticAsset(request) {
 
 // Handle navigation requests
 async function handleNavigation(request) {
+  const url = new URL(request.url);
+  
   try {
     const response = await fetch(request);
     
-    // Cache successful navigation responses
-    if (response.status === 200) {
+    // Cache successful navigation responses (only if cacheable)
+    if (response.status === 200 && isCacheableRequest(url)) {
       const responseClone = response.clone();
       const cache = await caches.open(DYNAMIC_CACHE);
-      cache.put(request, responseClone);
+      cache.put(request, responseClone).catch(() => {
+        // Silently fail if cache.put fails
+      });
     }
     
     return response;
@@ -235,8 +276,6 @@ self.addEventListener('sync', (event) => {
 async function doBackgroundSync() {
   try {
     // Sync any pending data when connection is restored
-    console.log('Performing background sync');
-    
     // Example: Sync cached API requests
     const cache = await caches.open(DYNAMIC_CACHE);
     const requests = await cache.keys();
@@ -247,12 +286,12 @@ async function doBackgroundSync() {
           await fetch(request);
           await cache.delete(request);
         } catch (error) {
-          console.log('Failed to sync request:', request.url);
+          // Silently fail if sync fails
         }
       }
     }
   } catch (error) {
-    console.error('Background sync failed:', error);
+    // Silently fail if background sync fails
   }
 }
 

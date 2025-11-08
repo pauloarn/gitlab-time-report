@@ -11,6 +11,13 @@ export interface TimeLog {
   dataTrack: TimeLogEntry[]
   weight?: number | null
   timeEstimate?: number | null
+  iteration?: {
+    id: string
+    title: string
+    description?: string | null
+    startDate?: string | null
+    dueDate?: string | null
+  } | null
 }
 
 // Holiday Types
@@ -41,6 +48,9 @@ export interface BusinessHoursInfo {
 export interface GitLabUser {
   id: string
   username?: string
+  name?: string
+  avatarUrl?: string
+  email?: string
 }
 
 export interface GitLabTimeLog {
@@ -56,6 +66,13 @@ export interface GitLabIssue {
   webUrl: string
   weight?: number | null
   timeEstimate?: number | null
+  iteration?: {
+    id: string
+    title: string
+    description?: string | null
+    startDate?: string | null
+    dueDate?: string | null
+  } | null
   timelogs: {
     count: number
     totalSpentTime: number
@@ -101,4 +118,46 @@ export interface MonthPeriod {
   firstDay: string
   lastDay: string
 }
+
+// Epic and Sprint Types
+export interface Epic {
+  id: string
+  title: string
+  webUrl: string
+  description?: string | null
+  sprints: Sprint[]
+  assignees?: Array<{
+    id: string
+    username: string
+    avatarUrl?: string | null
+    name?: string | null
+  }>
+}
+
+export interface Sprint {
+  id: string
+  title: string
+  description?: string | null
+  startDate?: string | null
+  dueDate?: string | null
+  issues: SprintIssue[]
+}
+
+export interface SprintIssue {
+  id: string
+  name: string
+  webUrl: string
+  weight?: number | null
+  timeEstimate?: number | null
+  state: string
+  totalSpentTime: number
+  timelogs: TimeLogEntry[]
+  assignees?: Array<{
+    id: string
+    username: string
+    avatarUrl?: string | null
+    name?: string | null
+  }>
+}
+
 
