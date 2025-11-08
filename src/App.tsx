@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { Toaster } from '@/components/ui/toaster'
 import { MonthPicker } from '@/components/ui/monthpicker'
@@ -39,7 +39,14 @@ export default function App() {
   const { toast } = useToast()
 
   const { data: holidays = [] } = useHolidays(selectedDate.getFullYear())
-  const { user } = useUser(isLoggedIn ? token : null)
+  // Garantir que o token está disponível antes de buscar o usuário
+  // Se estiver logado, ler do localStorage para garantir que está disponível
+  const effectiveToken = useMemo(() => {
+    if (!isLoggedIn) return null
+    // Priorizar o token do estado, mas usar localStorage como fallback
+    return token || localStorage.getItem(TOKEN_STORAGE_KEY) || null
+  }, [isLoggedIn, token])
+  const { user } = useUser(effectiveToken)
   const { epics = [], isLoading: sprintsLoading, isError: sprintsError, error: sprintsErrorDetail } = useSprints(
     isLoggedIn && activeTab === 3 ? token : null,
     selectedMilestoneTitle || undefined
@@ -75,6 +82,10 @@ export default function App() {
         variant: 'destructive',
       })
       return
+    }
+    // Garantir que o token está salvo no localStorage antes de fazer login
+    if (token) {
+      localStorage.setItem(TOKEN_STORAGE_KEY, token)
     }
     setIsLoggedIn(true)
   }
