@@ -56,7 +56,7 @@ export function Header({ user, onLogout, activeTab, onTabChange }: HeaderProps) 
   const avatarUrl = normalizeAvatarUrl(user?.avatarUrl)
   const logoPath = theme === 'dark' ? '/black-git-horas-icon.png' : '/white-git-horas-icon.png'
 
-  const tabs = ['Geral', 'Insights', 'Horas Úteis']
+  const tabs = ['Geral', 'Insights', 'Horas Úteis', 'Sprints']
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">

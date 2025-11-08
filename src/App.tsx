@@ -11,7 +11,10 @@ import { useToken } from '@/hooks/useToken'
 import { useTimeLogs } from '@/hooks/useTimeLogs'
 import { useHolidays } from '@/hooks/useHolidays'
 import { useUser } from '@/hooks/useUser'
+import { useSprints, useMilestones } from '@/hooks/useSprints'
 import { TOKEN_STORAGE_KEY } from '@/utils/constants'
+import { SprintsContent } from '@/components/SprintsContent'
+import type { Epic } from '@/types'
 
 export default function App() {
   const { token, showToken, handleTokenChange, handleClearToken, toggleTokenVisibility } =
@@ -31,10 +34,20 @@ export default function App() {
   )
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false)
   const [activeTab, setActiveTab] = useState<number>(0)
+  const [selectedEpicId, setSelectedEpicId] = useState<string>('')
+  const [selectedMilestoneTitle, setSelectedMilestoneTitle] = useState<string>('')
   const { toast } = useToast()
 
   const { data: holidays = [] } = useHolidays(selectedDate.getFullYear())
   const { user } = useUser(isLoggedIn ? token : null)
+  const { epics = [], isLoading: sprintsLoading, isError: sprintsError, error: sprintsErrorDetail } = useSprints(
+    isLoggedIn && activeTab === 3 ? token : null,
+    selectedMilestoneTitle || undefined
+  )
+  const { milestones = [], isLoading: milestonesLoading } = useMilestones(
+    isLoggedIn && activeTab === 3 ? token : null,
+    'projectengine-team'
+  )
 
   useEffect(() => {
     // Carregar token salvo apenas se não estiver logado
@@ -46,13 +59,13 @@ export default function App() {
     }
   }, [handleTokenChange, isLoggedIn])
 
-  // Buscar dados automaticamente quando entrar na tela ou mudar o mês
+  // Buscar dados automaticamente quando entrar na tela ou mudar o mês (apenas para abas que usam data)
   useEffect(() => {
-    if (isLoggedIn && token) {
+    if (isLoggedIn && token && activeTab !== 3) {
       handleGenerateCSV()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLoggedIn, selectedDate])
+  }, [isLoggedIn, selectedDate, activeTab])
 
   const handleEnter = () => {
     if (!token.trim()) {
@@ -133,53 +146,75 @@ export default function App() {
         onTabChange={setActiveTab}
       />
       <div className="container mx-auto px-4 py-8">
-        <div className="flex gap-8">
-          {/* Calendário à esquerda */}
-          <div className="flex-shrink-0">
-            <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg sticky top-24">
-              <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
-              {timeLogs.length > 0 && (
-                <div className="mt-6">
-                  <ReportActions
-                    loading={loading}
-                    hasData={timeLogs.length > 0}
-                    onDownload={handleDownloadCSV}
-                  />
+        {activeTab === 3 ? (
+          // Aba Sprints - sem calendário
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+            <SprintsContent
+              epics={epics as Epic[]}
+              isLoading={sprintsLoading}
+              isError={sprintsError}
+              error={sprintsErrorDetail}
+              milestones={milestones as Array<{ id: string; title: string; webPath: string }>}
+              milestonesLoading={milestonesLoading}
+              selectedMilestoneTitle={selectedMilestoneTitle}
+              onMilestoneChange={(milestoneTitle) => {
+                setSelectedMilestoneTitle(milestoneTitle)
+                setSelectedEpicId('') // Reset épico quando mudar milestone
+              }}
+              selectedEpicId={selectedEpicId}
+              onEpicChange={setSelectedEpicId}
+            />
+          </div>
+        ) : (
+          // Abas Geral, Insights, Horas Úteis - com calendário
+          <div className="flex gap-8">
+            {/* Calendário à esquerda */}
+            <div className="flex-shrink-0">
+              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg sticky top-24">
+                <MonthPicker currentValue={selectedDate} setValue={setSelectedDate} />
+                {timeLogs.length > 0 && (
+                  <div className="mt-6">
+                    <ReportActions
+                      loading={loading}
+                      hasData={timeLogs.length > 0}
+                      onDownload={handleDownloadCSV}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Conteúdo à direita */}
+            <div className="flex-1 min-w-0">
+              {loading && (
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
+                  <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
                 </div>
+              )}
+
+              {!loading && (
+                <>
+                  {validations.length > 0 && (
+                    <div className="mb-6">
+                      <IssueValidationAlert validations={validations} />
+                    </div>
+                  )}
+
+                  <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+                    <ReportContent
+                      activeTab={activeTab}
+                      timeLogs={timeLogs}
+                      totalTime={totalTime}
+                      insights={insights}
+                      selectedDate={selectedDate}
+                      holidays={holidays}
+                    />
+                  </div>
+                </>
               )}
             </div>
           </div>
-
-          {/* Conteúdo à direita */}
-          <div className="flex-1 min-w-0">
-            {loading && (
-              <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
-                <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
-              </div>
-            )}
-
-            {!loading && (
-              <>
-                {validations.length > 0 && (
-                  <div className="mb-6">
-                    <IssueValidationAlert validations={validations} />
-                  </div>
-                )}
-
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-                  <ReportContent
-                    activeTab={activeTab}
-                    timeLogs={timeLogs}
-                    totalTime={totalTime}
-                    insights={insights}
-                    selectedDate={selectedDate}
-                    holidays={holidays}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        )}
       </div>
 
       <Toaster />

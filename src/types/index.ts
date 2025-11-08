@@ -119,3 +119,33 @@ export interface MonthPeriod {
   lastDay: string
 }
 
+// Epic and Sprint Types
+export interface Epic {
+  id: string
+  title: string
+  webUrl: string
+  description?: string | null
+  sprints: Sprint[]
+}
+
+export interface Sprint {
+  id: string
+  title: string
+  description?: string | null
+  startDate?: string | null
+  dueDate?: string | null
+  issues: SprintIssue[]
+}
+
+export interface SprintIssue {
+  id: string
+  name: string
+  webUrl: string
+  weight?: number | null
+  timeEstimate?: number | null
+  state: string
+  totalSpentTime: number
+  timelogs: TimeLogEntry[]
+}
+
+
