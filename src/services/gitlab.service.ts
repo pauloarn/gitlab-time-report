@@ -14,50 +14,6 @@ import { convertTimeInHoursMinSec, getNumber, isDateBetween } from '@/lib/utils'
 
 const BASE_URL = 'https://gitlab.com/api/graphql'
 
-// Tipo para a resposta da query de sprints
-interface SprintsQueryResponse {
-  issues: {
-    count: number
-    nodes: Array<{
-      id: string
-      name: string
-      webUrl: string
-      weight?: number | null
-      timeEstimate?: number | null
-      state: string
-      milestone?: {
-        id: string
-        title: string
-        webPath: string
-        description?: string | null
-        startDate?: string | null
-        dueDate?: string | null
-      } | null
-      iteration?: {
-        id: string
-        title: string
-        description?: string | null
-        startDate?: string | null
-        dueDate?: string | null
-      } | null
-      timelogs: {
-        count: number
-        totalSpentTime: number
-        nodes: Array<{
-          id: string
-          spentAt: string
-          summary: string
-          timeSpent: number
-          user: {
-            id: string
-            username: string
-          }
-        }>
-      }
-    }>
-  }
-}
-
 const getMonthPeriod = (selectedDate: Date): MonthPeriod => {
   const y = selectedDate.getFullYear()
   const m = selectedDate.getMonth()
@@ -189,56 +145,6 @@ const createEpicsQuery = (groupId: string) => {
                   }
                 }
               }
-            }
-          }
-        }
-      }
-    }
-  `
-}
-
-const createSprintsQuery = (userId: string) => {
-  return gql`
-    query CurrentUser {
-      issues(assigneeId: "${userId}", first: 100) {
-        count
-        nodes {
-          id
-          name
-          webUrl
-          weight
-          timeEstimate
-          state
-          milestone {
-            id
-            title
-            webPath
-            description
-            startDate
-            dueDate
-          }
-          iteration {
-            id
-            title
-            description
-            startDate
-            dueDate
-          }
-          timelogs(first: 100) {
-            count
-            totalSpentTime
-            nodes {
-              id
-              spentAt
-              summary
-              timeSpent
-              user {
-                id
-                username
-              }
-            }
-            pageInfo {
-              hasNextPage
             }
           }
         }

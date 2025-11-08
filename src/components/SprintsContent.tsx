@@ -63,7 +63,7 @@ export function SprintsContent({
   if (isLoading) {
     return (
       <div className="p-12 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Carregando sprints...</p>
+        <p className="text-gray-500 dark:text-gray-400">Carregando épicos...</p>
       </div>
     )
   }
