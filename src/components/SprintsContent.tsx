@@ -41,6 +41,24 @@ export function SprintsContent({
       return newSet
     })
   }
+
+  // Função helper para converter URLs relativas de avatares para absolutas
+  const getAvatarUrl = (avatarUrl: string | null | undefined): string | null => {
+    if (!avatarUrl) return null
+    
+    // Se já for uma URL absoluta, retornar como está
+    if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+      return avatarUrl
+    }
+    
+    // Se for uma URL relativa, converter para absoluta do GitLab
+    if (avatarUrl.startsWith('/')) {
+      return `https://gitlab.com${avatarUrl}`
+    }
+    
+    // Se não começar com /, assumir que é relativa e adicionar https://gitlab.com
+    return `https://gitlab.com/${avatarUrl}`
+  }
   
   if (isLoading) {
     return (
@@ -137,15 +155,17 @@ export function SprintsContent({
                             .slice(0, 2)
                             .join('')
                       
+                      const avatarUrl = getAvatarUrl(assignee.avatarUrl)
+                      
                       return (
                         <div
                           key={assignee.id}
                           className="flex items-center gap-1.5"
                           title={assignee.name || assignee.username}
                         >
-                          {assignee.avatarUrl ? (
+                          {avatarUrl ? (
                             <img
-                              src={assignee.avatarUrl}
+                              src={avatarUrl}
                               alt={assignee.name || assignee.username}
                               className="w-5 h-5 rounded-full object-cover"
                               onError={(e) => {
@@ -158,7 +178,7 @@ export function SprintsContent({
                             />
                           ) : null}
                           <div 
-                            className={`w-5 h-5 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${assignee.avatarUrl ? 'hidden' : ''}`}
+                            className={`w-5 h-5 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${avatarUrl ? 'hidden' : ''}`}
                           >
                             {initials}
                           </div>
@@ -409,15 +429,17 @@ export function SprintsContent({
                                               .slice(0, 2)
                                               .join('')
                                         
+                                        const avatarUrl = getAvatarUrl(assignee.avatarUrl)
+                                        
                                         return (
                                           <div
                                             key={assignee.id}
                                             className="flex items-center gap-1.5"
                                             title={assignee.name || assignee.username}
                                           >
-                                            {assignee.avatarUrl ? (
+                                            {avatarUrl ? (
                                               <img
-                                                src={assignee.avatarUrl}
+                                                src={avatarUrl}
                                                 alt={assignee.name || assignee.username}
                                                 className="w-6 h-6 rounded-full object-cover"
                                                 onError={(e) => {
@@ -430,7 +452,7 @@ export function SprintsContent({
                                               />
                                             ) : null}
                                             <div 
-                                              className={`w-6 h-6 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${assignee.avatarUrl ? 'hidden' : ''}`}
+                                              className={`w-6 h-6 rounded-full bg-orange-500 dark:bg-orange-600 flex items-center justify-center text-white text-xs font-medium ${avatarUrl ? 'hidden' : ''}`}
                                             >
                                               {initials}
                                             </div>
