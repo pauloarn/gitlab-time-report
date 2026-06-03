@@ -1,0 +1,10 @@
+packages:
+  - .
+
+pnpm:
+  auditConfig:
+    ignoreGhsas: []
+    # Add GHSA IDs here to bypass the audit gate for CVEs with no upstream fix.
+    # Example:
+    # ignoreGhsas:
+    #   - GHSA-xxxx-xxxx-xxxx

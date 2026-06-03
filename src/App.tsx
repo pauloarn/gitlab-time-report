@@ -15,6 +15,9 @@ import { useUser } from '@/hooks/useUser'
 import { useSprints, useMilestones } from '@/hooks/useSprints'
 import { TOKEN_STORAGE_KEY } from '@/utils/constants'
 import { SprintsContent } from '@/components/SprintsContent'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import { RefreshCw } from 'lucide-react'
 import type { Epic } from '@/types'
 
 export default function App() {
@@ -47,7 +50,7 @@ export default function App() {
     return token || localStorage.getItem(TOKEN_STORAGE_KEY) || null
   }, [isLoggedIn, token])
   const { user } = useUser(effectiveToken)
-  const { epics = [], isLoading: sprintsLoading, isError: sprintsError, error: sprintsErrorDetail } = useSprints(
+  const { epics = [], isLoading: sprintsLoading, isError: sprintsError, error: sprintsErrorDetail, refetch: sprintsRefetch } = useSprints(
     isLoggedIn && activeTab === 3 ? token : null,
     selectedMilestoneTitle || undefined
   )
@@ -159,18 +162,25 @@ export default function App() {
       <div className="container mx-auto px-4 py-8 flex-1">
         {activeTab === 3 ? (
           // Aba Sprints - sem calendário
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
-            <SprintsContent
-              epics={epics as Epic[]}
-              isLoading={sprintsLoading}
-              isError={sprintsError}
-              error={sprintsErrorDetail}
-              milestones={milestones as Array<{ id: string; title: string; webPath: string }>}
-              milestonesLoading={milestonesLoading}
-              selectedMilestoneTitle={selectedMilestoneTitle}
-              onMilestoneChange={setSelectedMilestoneTitle}
-            />
-          </div>
+          <>
+            <div className="flex justify-end mb-3">
+              <Button variant="ghost" size="sm" onClick={() => sprintsRefetch()} disabled={sprintsLoading}>
+                <RefreshCw className={`h-4 w-4${sprintsLoading ? ' animate-spin' : ''}`} />
+              </Button>
+            </div>
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+              <SprintsContent
+                epics={epics as Epic[]}
+                isLoading={sprintsLoading}
+                isError={sprintsError}
+                error={sprintsErrorDetail}
+                milestones={milestones as Array<{ id: string; title: string; webPath: string }>}
+                milestonesLoading={milestonesLoading}
+                selectedMilestoneTitle={selectedMilestoneTitle}
+                onMilestoneChange={setSelectedMilestoneTitle}
+              />
+            </div>
+          </>
         ) : (
           // Abas Geral, Insights, Horas Úteis - com calendário
           <div className="flex gap-8">
@@ -192,9 +202,19 @@ export default function App() {
 
             {/* Conteúdo à direita */}
             <div className="flex-1 min-w-0">
+              {timeLogs.length > 0 && (
+                <div className="flex justify-end mb-3">
+                  <Button variant="ghost" size="sm" onClick={handleGenerateCSV} disabled={loading}>
+                    <RefreshCw className={`h-4 w-4${loading ? ' animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              )}
+
               {loading && (
-                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg text-center">
-                  <p className="text-gray-600 dark:text-gray-400">Carregando dados...</p>
+                <div className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-lg space-y-3">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
                 </div>
               )}
 

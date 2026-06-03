@@ -5,8 +5,22 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NODE_VERSION: 20-alpine
     image: gitlab-time-report:latest
     container_name: gitlab-time-report-app
     ports:
-      - "80:80"
-    restart: unless-stopped
+      - "${HOST_PORT:-80}:8080"
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gitlab-time-report-network
+
+networks:
+  gitlab-time-report-network:
+    driver: bridge
