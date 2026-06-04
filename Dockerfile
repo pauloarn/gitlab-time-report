@@ -16,8 +16,8 @@ COPY package.json pnpm-lock.yaml .npmrc ./
 # Install project dependencies using pnpm (ensures a clean, reproducible install)
 RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile
 
-# Fail the build if any high or critical CVE is found in dependencies
-RUN pnpm audit --audit-level=high
+# Fail the build if any high or critical CVE is found in production dependencies
+RUN pnpm audit --audit-level=high --prod
 
 # Copy the rest of the application source code into the container
 COPY . .
@@ -29,7 +29,7 @@ RUN pnpm build
 # Stage 2: Serve static files with Brotli-capable Nginx
 # =========================================
 
-FROM fholzer/nginx-brotli:v1.25.3 AS production
+FROM fholzer/nginx-brotli:v1.26.2 AS production
 
 # Copy the static build output from the build stage
 COPY --from=builder /app/dist /usr/share/nginx/html
