@@ -47,4 +47,5 @@ USER nginx
 
 EXPOSE 8080
 
-CMD ["nginx", "-g", "daemon off;"]
+# Base image ENTRYPOINT is already ["nginx"]; only pass flags here.
+CMD ["-g", "daemon off;"]
