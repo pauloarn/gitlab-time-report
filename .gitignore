@@ -119,3 +119,39 @@ buck-out/
 # Expo
 .expo/*
 web-build/
+
+# pnpm
+.pnpm-store/
+
+# AI / coding agent local config (IDE-specific, not project source)
+.adal/
+.agents/
+.augment/
+.claude/
+.codebuddy/
+.commandcode/
+.compozy/
+.continue/
+.cortex/
+.crush/
+.factory/
+.goose/
+.iflow/
+.junie/
+.kilocode/
+.kiro/
+.kode/
+.mcpjam/
+.mux/
+.neovate/
+.openhands/
+.pochi/
+.pi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.vibe/
+.windsurf/
+.zencoder/
+skills/
