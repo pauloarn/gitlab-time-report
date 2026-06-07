@@ -15,8 +15,8 @@ services:
       retries: 3
       start_period: 40s
     networks:
-      - gitlab-time-report-network
+      - dokploy-network
 
 networks:
-  gitlab-time-report-network:
-    driver: bridge
+  dokploy-network:
+    external: true
