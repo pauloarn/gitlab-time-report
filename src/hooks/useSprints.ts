@@ -21,7 +21,7 @@ export function useSprints(token: string | null, milestoneTitle?: string) {
     },
     enabled: !!token,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
   })
 
   return { epics, isLoading, isError, error, refetch }
@@ -47,7 +47,7 @@ export function useMilestones(token: string | null, groupId: string | null) {
     },
     enabled: !!token && !!groupId,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
   })
 
   return { milestones, isLoading, isError, error }
@@ -73,7 +73,7 @@ export function useGroups(token: string | null) {
     },
     enabled: !!token,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    cacheTime: 1000 * 60 * 10, // 10 minutes
+    gcTime: 1000 * 60 * 10, // 10 minutes
   })
 
   return { groups, isLoading, isError, error }
