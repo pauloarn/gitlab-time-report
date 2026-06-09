@@ -5,14 +5,10 @@ import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
   server: {
-    cors: true,
-    headers: {
-      'Cross-Origin-Embedder-Policy': 'credentialless',
-    },
-    allowedHosts: true,
+    host: true,
+    allowedHosts: ['githoras.codehivehub.com.br/'],
   },
   resolve: {
-    extensions: ['.jsx', '.js', '.tsx', '.ts', '.json'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },

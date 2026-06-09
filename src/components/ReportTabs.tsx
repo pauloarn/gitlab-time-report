@@ -110,8 +110,8 @@ export function ReportTabs({
                 {
                   key: 'date',
                   title: 'Data',
-                  render: (data: string) => {
-                    if (data) {
+                  render: (data: unknown) => {
+                    if (typeof data === 'string' && data) {
                       return format(new Date(data), 'dd/MM/yyyy')
                     }
                     return ''
@@ -120,7 +120,8 @@ export function ReportTabs({
                 {
                   key: 'timeLoggedInSeconds',
                   title: 'Horas Trabalhadas',
-                  render: convertTimeInHoursMinSec,
+                  render: (value: unknown) =>
+                    convertTimeInHoursMinSec(value as number),
                 },
               ]}
             />
