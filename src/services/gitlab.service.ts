@@ -1,26 +1,146 @@
-import { ApolloClient, gql, InMemoryCache } from '@apollo/client'
+import { ApolloClient, gql, HttpLink, InMemoryCache } from '@apollo/client'
 import { format, isBefore } from 'date-fns'
 import type {
   Epic,
-  GitLabQueryResponse,
   GitLabUser,
+  GitLabIssue,
   IssueValidation,
   MonthPeriod,
   Sprint,
   SprintIssue,
   TimeLog,
 } from '@/types'
-import { convertTimeInHoursMinSec, getNumber, isDateBetween } from '@/lib/utils'
+import { convertTimeInHoursMinSec } from '@/lib/utils'
 
 const BASE_URL = 'https://gitlab.com/api/graphql'
+const PAGE_SIZE = 100
+
+const TIMELOG_FIELDS = `
+  id
+  spentAt
+  summary
+  timeSpent
+  user {
+    id
+    username
+  }
+`
+
+const ISSUE_FIELDS_FOR_EPIC = `
+  id
+  name
+  webUrl
+  weight
+  timeEstimate
+  state
+  milestone {
+    id
+    title
+    webPath
+  }
+  assignees {
+    nodes {
+      id
+      username
+      avatarUrl
+      name
+    }
+  }
+  participants {
+    nodes {
+      id
+      username
+      avatarUrl
+      name
+    }
+  }
+  iteration {
+    id
+    title
+    description
+    startDate
+    dueDate
+  }
+`
+
+type EpicIssueNode = {
+  id: string
+  name: string
+  webUrl: string
+  weight?: number | null
+  timeEstimate?: number | null
+  state: string
+  milestone?: { id: string; title: string; webPath: string } | null
+  assignees: {
+    nodes: Array<{
+      id: string
+      username: string
+      avatarUrl?: string | null
+      name?: string | null
+    }>
+  }
+  participants?: {
+    nodes: Array<{
+      id: string
+      username: string
+      avatarUrl?: string | null
+      name?: string | null
+    }>
+  }
+  iteration?: {
+    id: string
+    title: string
+    description?: string | null
+    startDate?: string | null
+    dueDate?: string | null
+  } | null
+  timelogs: {
+    count: number
+    totalSpentTime: number
+    nodes: Array<{
+      id: string
+      spentAt: string
+      summary: string
+      timeSpent: number
+      user: { id: string; username: string }
+    }>
+  }
+}
 
 const getMonthPeriod = (selectedDate: Date): MonthPeriod => {
   const y = selectedDate.getFullYear()
   const m = selectedDate.getMonth()
   return {
-    firstDay: new Date(y, m, 1).toISOString(),
-    lastDay: new Date(y, m + 1, 0).toISOString(),
+    firstDay: format(new Date(y, m, 1), 'yyyy-MM-dd'),
+    lastDay: format(new Date(y, m + 1, 0), 'yyyy-MM-dd'),
   }
+}
+
+type UserTimelogNode = {
+  id: string
+  spentAt: string
+  summary: string
+  timeSpent: number
+  user: { id: string; username: string }
+  issue?: {
+    id: string
+    name: string
+    webUrl: string
+    weight?: number | null
+    timeEstimate?: number | null
+    iteration?: {
+      id: string
+      title: string
+      description?: string | null
+      startDate?: string | null
+      dueDate?: string | null
+    } | null
+  } | null
+  mergeRequest?: {
+    id: string
+    title: string
+    webUrl: string
+  } | null
 }
 
 const CURRENT_USER_QUERY = gql`
@@ -34,47 +154,6 @@ const CURRENT_USER_QUERY = gql`
     }
   }
 `
-
-const createTimeLogQuery = (userId: string, selectedDate: string) => {
-  return gql`
-    query CurrentUser {
-      issues(assigneeId: "${userId}", first: 100, updatedAfter: "${selectedDate}") {
-        count
-        weight
-        nodes {
-          name
-          webUrl
-          weight
-          timeEstimate
-          iteration {
-            id
-            title
-            description
-            startDate
-            dueDate
-          }
-          timelogs(first: 100) {
-            count
-            totalSpentTime
-            nodes {
-              id
-              spentAt
-              summary
-              timeSpent
-              user {
-                id
-                username
-              }
-            }
-            pageInfo {
-              hasNextPage
-            }
-          }
-        }
-      }
-    }
-  `
-}
 
 const createEpicsQuery = (groupId: string) => {
   return gql`
@@ -91,7 +170,7 @@ const createEpicsQuery = (groupId: string) => {
             title
             webUrl
             description
-            issues(first: 100) {
+            issues(first: ${PAGE_SIZE}) {
               nodes {
                 id
                 name
@@ -127,7 +206,7 @@ const createEpicsQuery = (groupId: string) => {
                   startDate
                   dueDate
                 }
-                timelogs(first: 100) {
+                timelogs(first: ${PAGE_SIZE}) {
                   count
                   totalSpentTime
                   nodes {
@@ -158,10 +237,12 @@ export class GitLabService {
 
   constructor(userAccessToken: string) {
     this.client = new ApolloClient({
-      uri: BASE_URL,
-      headers: {
-        Authorization: `Bearer ${userAccessToken}`,
-      },
+      link: new HttpLink({
+        uri: BASE_URL,
+        headers: {
+          Authorization: `Bearer ${userAccessToken}`,
+        },
+      }),
       cache: new InMemoryCache(),
     })
   }
@@ -184,6 +265,219 @@ export class GitLabService {
     }
   }
 
+  private async fetchTimelogsAfter(
+    issueId: string,
+    after: string
+  ): Promise<GitLabIssue['timelogs']['nodes']> {
+    const nodes: GitLabIssue['timelogs']['nodes'] = []
+    let hasNextPage = true
+    let cursor: string | null = after
+
+    while (hasNextPage && cursor) {
+      const response = await this.client.query<{
+        issue: {
+          timelogs: {
+            nodes: GitLabIssue['timelogs']['nodes']
+            pageInfo: { hasNextPage: boolean; endCursor: string | null }
+          }
+        } | null
+      }>({
+        query: gql`
+          query IssueTimelogs($issueId: IssueID!, $after: String!) {
+            issue(id: $issueId) {
+              timelogs(first: ${PAGE_SIZE}, after: $after) {
+                nodes {
+                  ${TIMELOG_FIELDS}
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+          }
+        `,
+        variables: { issueId, after: cursor },
+        fetchPolicy: 'no-cache',
+      })
+
+      if (!response.data?.issue) {
+        break
+      }
+
+      nodes.push(...response.data.issue.timelogs.nodes)
+      hasNextPage = response.data.issue.timelogs.pageInfo.hasNextPage
+      cursor = response.data.issue.timelogs.pageInfo.endCursor
+    }
+
+    return nodes
+  }
+
+  private async fetchAllUserTimelogs(
+    username: string,
+    startDate: string,
+    endDate: string
+  ): Promise<UserTimelogNode[]> {
+    const allTimelogs: UserTimelogNode[] = []
+    let hasNextPage = true
+    let cursor: string | null = null
+
+    while (hasNextPage) {
+      const response = await this.client.query<{
+        timelogs: {
+          nodes: UserTimelogNode[]
+          pageInfo: { hasNextPage: boolean; endCursor: string | null }
+        }
+      }>({
+        query: gql`
+          query UserTimelogs(
+            $username: String!
+            $startDate: Time!
+            $endDate: Time!
+            $after: String
+          ) {
+            timelogs(
+              username: $username
+              startDate: $startDate
+              endDate: $endDate
+              first: ${PAGE_SIZE}
+              after: $after
+            ) {
+              pageInfo {
+                hasNextPage
+                endCursor
+              }
+              nodes {
+                id
+                spentAt
+                summary
+                timeSpent
+                user {
+                  id
+                  username
+                }
+                issue {
+                  id
+                  name
+                  webUrl
+                  weight
+                  timeEstimate
+                  iteration {
+                    id
+                    title
+                    description
+                    startDate
+                    dueDate
+                  }
+                }
+                mergeRequest {
+                  id
+                  title
+                  webUrl
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          username,
+          startDate,
+          endDate,
+          ...(cursor ? { after: cursor } : {}),
+        },
+        fetchPolicy: 'no-cache',
+      })
+
+      allTimelogs.push(...response.data.timelogs.nodes)
+      hasNextPage = response.data.timelogs.pageInfo.hasNextPage
+      cursor = response.data.timelogs.pageInfo.endCursor
+    }
+
+    return allTimelogs
+  }
+
+  private async fetchAllEpicIssues(epicId: string): Promise<EpicIssueNode[]> {
+    type EpicIssueQueryNode = EpicIssueNode & {
+      timelogs: EpicIssueNode['timelogs'] & {
+        pageInfo?: { hasNextPage: boolean; endCursor: string | null }
+      }
+    }
+
+    const allIssues: EpicIssueNode[] = []
+    let hasNextPage = true
+    let cursor: string | null = null
+
+    while (hasNextPage) {
+      const response = await this.client.query<{
+        epic: {
+          issues: {
+            nodes: EpicIssueQueryNode[]
+            pageInfo: { hasNextPage: boolean; endCursor: string | null }
+          }
+        } | null
+      }>({
+        query: gql`
+          query EpicIssues($epicId: EpicID!, $after: String) {
+            epic(id: $epicId) {
+              issues(first: ${PAGE_SIZE}, after: $after) {
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+                nodes {
+                  ${ISSUE_FIELDS_FOR_EPIC}
+                  timelogs(first: ${PAGE_SIZE}) {
+                    count
+                    totalSpentTime
+                    nodes {
+                      ${TIMELOG_FIELDS}
+                    }
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                  }
+                }
+              }
+            }
+          }
+        `,
+        variables: {
+          epicId,
+          ...(cursor ? { after: cursor } : {}),
+        },
+        fetchPolicy: 'no-cache',
+      })
+
+      if (!response.data?.epic) {
+        break
+      }
+
+      for (const issue of response.data.epic.issues.nodes) {
+        const timelogNodes = [...issue.timelogs.nodes]
+
+        if (issue.timelogs.pageInfo?.hasNextPage && issue.timelogs.pageInfo.endCursor) {
+          const more = await this.fetchTimelogsAfter(issue.id, issue.timelogs.pageInfo.endCursor)
+          timelogNodes.push(...more)
+        }
+
+        allIssues.push({
+          ...issue,
+          timelogs: {
+            count: timelogNodes.length,
+            totalSpentTime: timelogNodes.reduce((sum, tl) => sum + tl.timeSpent, 0),
+            nodes: timelogNodes,
+          },
+        })
+      }
+
+      hasNextPage = response.data.epic.issues.pageInfo.hasNextPage
+      cursor = response.data.epic.issues.pageInfo.endCursor
+    }
+
+    return allIssues
+  }
+
   async generateReport(selectedMonth: Date): Promise<{
     timeLogs: TimeLog[]
     validations: IssueValidation[]
@@ -192,69 +486,98 @@ export class GitLabService {
       const user = await this.getCurrentUser()
       const dateReferences = getMonthPeriod(selectedMonth)
 
-      const response = await this.client.query<GitLabQueryResponse>({
-        query: createTimeLogQuery(getNumber(user.id), dateReferences.firstDay),
-      })
+      if (!user.username) {
+        throw new Error('Usuário sem username no GitLab')
+      }
+
+      const timelogNodes = await this.fetchAllUserTimelogs(
+        user.username,
+        dateReferences.firstDay,
+        dateReferences.lastDay
+      )
 
       const timeLogs: TimeLog[] = []
       const validations: IssueValidation[] = []
+      const groupedByIssuable = new Map<string, {
+        taskName: string
+        webUrl: string
+        weight?: number | null
+        timeEstimate?: number | null
+        iteration: TimeLog['iteration']
+        dataTrack: TimeLog['dataTrack']
+      }>()
 
-      response.data.issues.nodes.forEach((node) => {
-        const timeLogAux: TimeLog = {
-          taskName: node.name,
-          webUrl: node.webUrl,
-          weight: node.weight,
-          timeEstimate: node.timeEstimate,
-          iteration: node.iteration ? {
-            id: node.iteration.id,
-            title: node.iteration.title,
-            description: node.iteration.description || null,
-            startDate: node.iteration.startDate || null,
-            dueDate: node.iteration.dueDate || null,
-          } : null,
-          dataTrack: [],
+      timelogNodes.forEach((timelog) => {
+        const issue = timelog.issue
+        const mergeRequest = timelog.mergeRequest
+        const issuableKey = issue?.id ?? mergeRequest?.id
+        if (!issuableKey) {
+          return
         }
 
-        node.timelogs.nodes.forEach((timeLog) => {
-          if (
-            timeLog.user.id === user.id &&
-            isDateBetween(
-              new Date(timeLog.spentAt),
-              new Date(dateReferences.firstDay),
-              new Date(dateReferences.lastDay)
-            )
-          ) {
-            timeLogAux.dataTrack.push({
-              timeLoggedInSeconds: timeLog.timeSpent,
-              description: timeLog.summary,
-              date: timeLog.spentAt,
-            })
-          }
+        const taskName = issue?.name ?? mergeRequest?.title ?? 'Sem título'
+        const webUrl = issue?.webUrl ?? mergeRequest?.webUrl ?? ''
+
+        if (!groupedByIssuable.has(issuableKey)) {
+          groupedByIssuable.set(issuableKey, {
+            taskName,
+            webUrl,
+            weight: issue?.weight,
+            timeEstimate: issue?.timeEstimate,
+            iteration: issue?.iteration
+              ? {
+                  id: issue.iteration.id,
+                  title: issue.iteration.title,
+                  description: issue.iteration.description || null,
+                  startDate: issue.iteration.startDate || null,
+                  dueDate: issue.iteration.dueDate || null,
+                }
+              : null,
+            dataTrack: [],
+          })
+        }
+
+        groupedByIssuable.get(issuableKey)!.dataTrack.push({
+          timeLoggedInSeconds: timelog.timeSpent,
+          description: timelog.summary,
+          date: timelog.spentAt,
         })
+      })
 
-        // Verificar se a issue tem weight e timeEstimate apenas se tiver time logs
-        if (timeLogAux.dataTrack.length > 0) {
-          const hasWeight = node.weight !== null && node.weight !== undefined
+      groupedByIssuable.forEach((group) => {
+        if (group.dataTrack.length === 0) {
+          return
+        }
+
+        if (group.webUrl.includes('/issues/')) {
+          const hasWeight = group.weight !== null && group.weight !== undefined
           const hasTimeEstimate =
-            node.timeEstimate !== null && node.timeEstimate !== undefined
+            group.timeEstimate !== null && group.timeEstimate !== undefined
 
-          // Adicionar à lista de validações se faltar alguma informação
           if (!hasWeight || !hasTimeEstimate) {
             validations.push({
               hasWeight,
               hasTimeEstimate,
-              issueName: node.name,
-              issueUrl: node.webUrl,
+              issueName: group.taskName,
+              issueUrl: group.webUrl,
             })
           }
-
-          timeLogAux.dataTrack.sort((a, b) => {
-            const dateA = new Date(a.date)
-            const dateB = new Date(b.date)
-            return dateA.getTime() - dateB.getTime()
-          })
-          timeLogs.push(timeLogAux)
         }
+
+        group.dataTrack.sort((a, b) => {
+          const dateA = new Date(a.date)
+          const dateB = new Date(b.date)
+          return dateA.getTime() - dateB.getTime()
+        })
+
+        timeLogs.push({
+          taskName: group.taskName,
+          webUrl: group.webUrl,
+          weight: group.weight,
+          timeEstimate: group.timeEstimate,
+          iteration: group.iteration,
+          dataTrack: group.dataTrack,
+        })
       })
 
       return {
@@ -266,8 +589,11 @@ export class GitLabService {
         validations,
       }
     } catch (error) {
+      const graphQLError = error instanceof Error && 'graphQLErrors' in error
+        ? (error as { graphQLErrors?: Array<{ message: string }> }).graphQLErrors?.[0]?.message
+        : undefined
       throw new Error(
-        `Erro ao gerar relatório: ${error instanceof Error ? error.message : 'Erro desconhecido'}`
+        `Erro ao gerar relatório: ${graphQLError ?? (error instanceof Error ? error.message : 'Erro desconhecido')}`
       )
     }
   }
@@ -428,42 +754,85 @@ export class GitLabService {
 
   async getMilestones(groupId: string, search?: string): Promise<Array<{ id: string; title: string; webPath: string }>> {
     try {
-      const searchFilter = search ? `searchTitle: "${search}", ` : ''
-      const response = await this.client.query<{
-        group: {
-          milestones: {
-            nodes: Array<{
-              id: string
-              title: string
-              webPath?: string
-            }>
-          }
-        }
-      }>({
-        query: gql`
-          query GroupMilestones {
-            group(fullPath: "${groupId}") {
-              milestones(
-                ${searchFilter}
-                includeAncestors: true
-                includeDescendants: true
-                sort: EXPIRED_LAST_DUE_DATE_ASC
-                state: active
-                first: 100
-              ) {
-                nodes {
-                  id
-                  title
-                  webPath
+      const allMilestones: Array<{ id: string; title: string; webPath?: string }> = []
+      let hasNextPage = true
+      let cursor: string | null = null
+
+      while (hasNextPage) {
+        const milestonesQuery = search
+          ? gql`
+              query GroupMilestones($fullPath: ID!, $searchTitle: String!, $after: String) {
+                group(fullPath: $fullPath) {
+                  milestones(
+                    searchTitle: $searchTitle
+                    includeAncestors: true
+                    includeDescendants: true
+                    sort: EXPIRED_LAST_DUE_DATE_ASC
+                    state: active
+                    first: ${PAGE_SIZE}
+                    after: $after
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      title
+                      webPath
+                    }
+                  }
                 }
               }
+            `
+          : gql`
+              query GroupMilestones($fullPath: ID!, $after: String) {
+                group(fullPath: $fullPath) {
+                  milestones(
+                    includeAncestors: true
+                    includeDescendants: true
+                    sort: EXPIRED_LAST_DUE_DATE_ASC
+                    state: active
+                    first: ${PAGE_SIZE}
+                    after: $after
+                  ) {
+                    pageInfo {
+                      hasNextPage
+                      endCursor
+                    }
+                    nodes {
+                      id
+                      title
+                      webPath
+                    }
+                  }
+                }
+              }
+            `
+
+        const response = await this.client.query<{
+          group: {
+            milestones: {
+              nodes: Array<{ id: string; title: string; webPath?: string }>
+              pageInfo: { hasNextPage: boolean; endCursor: string | null }
             }
           }
-        `,
-        fetchPolicy: 'no-cache',
-      })
+        }>({
+          query: milestonesQuery,
+          variables: {
+            fullPath: groupId,
+            ...(search ? { searchTitle: search } : {}),
+            ...(cursor ? { after: cursor } : {}),
+          },
+          fetchPolicy: 'no-cache',
+        })
 
-      return response.data.group.milestones.nodes.map((milestone) => ({
+        allMilestones.push(...response.data.group.milestones.nodes)
+        hasNextPage = response.data.group.milestones.pageInfo.hasNextPage
+        cursor = response.data.group.milestones.pageInfo.endCursor
+      }
+
+      return allMilestones.map((milestone) => ({
         id: milestone.id,
         title: milestone.title,
         webPath: milestone.webPath || '',
@@ -942,7 +1311,7 @@ export class GitLabService {
                           startDate
                           dueDate
                         }
-                        timelogs(first: 100) {
+                        timelogs(first: ${PAGE_SIZE}) {
                           count
                           totalSpentTime
                           nodes {
@@ -1057,6 +1426,16 @@ export class GitLabService {
         hasNextPage = response.data.group.epics.pageInfo?.hasNextPage || false
         cursor = response.data.group.epics.pageInfo?.endCursor || null
       }
+
+      // Buscar todas as issues de cada épico (sem limite de 100)
+      allEpicNodes = await Promise.all(
+        allEpicNodes.map(async (epic) => ({
+          ...epic,
+          issues: {
+            nodes: await this.fetchAllEpicIssues(epic.id),
+          },
+        }))
+      )
 
       const epics: Epic[] = []
       
@@ -1221,38 +1600,50 @@ export class GitLabService {
 
   async getGroups(): Promise<Array<{ id: string; fullPath: string; name: string }>> {
     try {
-      const response = await this.client.query<{
-        currentUser: {
-          groups: {
-            nodes: Array<{
-              id: string
-              fullPath: string
-              name: string
-            }>
+      const allGroups: Array<{ id: string; fullPath: string; name: string }> = []
+      let hasNextPage = true
+      let cursor: string | null = null
+
+      while (hasNextPage) {
+        const response = await this.client.query<{
+          currentUser: {
+            groups: {
+              nodes: Array<{ id: string; fullPath: string; name: string }>
+              pageInfo: { hasNextPage: boolean; endCursor: string | null }
+            }
           }
-        }
-      }>({
-        query: gql`
-          query CurrentUserGroups {
-            currentUser {
-              groups(first: 100) {
-                nodes {
-                  id
-                  fullPath
-                  name
+        }>({
+          query: gql`
+            query CurrentUserGroups($after: String) {
+              currentUser {
+                groups(first: ${PAGE_SIZE}, after: $after) {
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                  nodes {
+                    id
+                    fullPath
+                    name
+                  }
                 }
               }
             }
-          }
-        `,
-        fetchPolicy: 'no-cache',
-      })
+          `,
+          variables: cursor ? { after: cursor } : {},
+          fetchPolicy: 'no-cache',
+        })
 
-      if (!response.data?.currentUser?.groups) {
-        return []
+        if (!response.data?.currentUser?.groups) {
+          break
+        }
+
+        allGroups.push(...response.data.currentUser.groups.nodes)
+        hasNextPage = response.data.currentUser.groups.pageInfo.hasNextPage
+        cursor = response.data.currentUser.groups.pageInfo.endCursor
       }
 
-      return response.data.currentUser.groups.nodes.map((group) => ({
+      return allGroups.map((group) => ({
         id: group.id,
         fullPath: group.fullPath,
         name: group.name,
