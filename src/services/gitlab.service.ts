@@ -1,9 +1,14 @@
-import { ApolloClient, gql, HttpLink, InMemoryCache } from '@apollo/client'
+import {
+  ApolloClient,
+  gql,
+  HttpLink,
+  InMemoryCache,
+  type ApolloQueryResult,
+} from '@apollo/client'
 import { format, isBefore } from 'date-fns'
 import type {
   Epic,
   GitLabUser,
-  GitLabIssue,
   IssueValidation,
   MonthPeriod,
   Sprint,
@@ -268,20 +273,22 @@ export class GitLabService {
   private async fetchTimelogsAfter(
     issueId: string,
     after: string
-  ): Promise<GitLabIssue['timelogs']['nodes']> {
-    const nodes: GitLabIssue['timelogs']['nodes'] = []
+  ): Promise<EpicIssueNode['timelogs']['nodes']> {
+    const nodes: EpicIssueNode['timelogs']['nodes'] = []
     let hasNextPage = true
     let cursor: string | null = after
 
     while (hasNextPage && cursor) {
-      const response = await this.client.query<{
+      type IssueTimelogsResponse = {
         issue: {
           timelogs: {
-            nodes: GitLabIssue['timelogs']['nodes']
+            nodes: EpicIssueNode['timelogs']['nodes']
             pageInfo: { hasNextPage: boolean; endCursor: string | null }
           }
         } | null
-      }>({
+      }
+      const response: ApolloQueryResult<IssueTimelogsResponse> =
+        await this.client.query<IssueTimelogsResponse>({
         query: gql`
           query IssueTimelogs($issueId: IssueID!, $after: String!) {
             issue(id: $issueId) {
@@ -323,12 +330,14 @@ export class GitLabService {
     let cursor: string | null = null
 
     while (hasNextPage) {
-      const response = await this.client.query<{
+      type UserTimelogsResponse = {
         timelogs: {
           nodes: UserTimelogNode[]
           pageInfo: { hasNextPage: boolean; endCursor: string | null }
         }
-      }>({
+      }
+      const response: ApolloQueryResult<UserTimelogsResponse> =
+        await this.client.query<UserTimelogsResponse>({
         query: gql`
           query UserTimelogs(
             $username: String!
@@ -408,14 +417,16 @@ export class GitLabService {
     let cursor: string | null = null
 
     while (hasNextPage) {
-      const response = await this.client.query<{
+      type EpicIssuesResponse = {
         epic: {
           issues: {
             nodes: EpicIssueQueryNode[]
             pageInfo: { hasNextPage: boolean; endCursor: string | null }
           }
         } | null
-      }>({
+      }
+      const response: ApolloQueryResult<EpicIssuesResponse> =
+        await this.client.query<EpicIssuesResponse>({
         query: gql`
           query EpicIssues($epicId: EpicID!, $after: String) {
             epic(id: $epicId) {
@@ -810,14 +821,16 @@ export class GitLabService {
               }
             `
 
-        const response = await this.client.query<{
+        type GroupMilestonesResponse = {
           group: {
             milestones: {
               nodes: Array<{ id: string; title: string; webPath?: string }>
               pageInfo: { hasNextPage: boolean; endCursor: string | null }
             }
           }
-        }>({
+        }
+        const response: ApolloQueryResult<GroupMilestonesResponse> =
+          await this.client.query<GroupMilestonesResponse>({
           query: milestonesQuery,
           variables: {
             fullPath: groupId,
@@ -1605,14 +1618,16 @@ export class GitLabService {
       let cursor: string | null = null
 
       while (hasNextPage) {
-        const response = await this.client.query<{
+        type CurrentUserGroupsResponse = {
           currentUser: {
             groups: {
               nodes: Array<{ id: string; fullPath: string; name: string }>
               pageInfo: { hasNextPage: boolean; endCursor: string | null }
             }
           }
-        }>({
+        }
+        const response: ApolloQueryResult<CurrentUserGroupsResponse> =
+          await this.client.query<CurrentUserGroupsResponse>({
           query: gql`
             query CurrentUserGroups($after: String) {
               currentUser {
