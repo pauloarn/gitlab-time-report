@@ -1,6 +1,7 @@
 import { format } from 'date-fns'
 import { convertTimeInHoursMinSec } from '@/lib/utils'
 import { AlertTriangle, ChevronDown, ChevronUp, User } from 'lucide-react'
+import { Skeleton } from '@/components/ui/skeleton'
 import ReactMarkdown from 'react-markdown'
 import rehypeRaw from 'rehype-raw'
 import { useState } from 'react'
@@ -62,8 +63,13 @@ export function SprintsContent({
   
   if (isLoading) {
     return (
-      <div className="p-12 text-center">
-        <p className="text-gray-500 dark:text-gray-400">Carregando épicos...</p>
+      <div className="p-6 space-y-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <Skeleton className="h-8 w-1/3" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        ))}
       </div>
     )
   }

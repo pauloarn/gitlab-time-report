@@ -1,12 +1,22 @@
-version: '3.8'
-
 services:
   gitlab-time-report:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NODE_VERSION: 20-alpine
     image: gitlab-time-report:latest
     container_name: gitlab-time-report-app
-    ports:
-      - "80:80"
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

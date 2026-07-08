@@ -79,6 +79,7 @@ export interface GitLabIssue {
     nodes: GitLabTimeLog[]
     pageInfo: {
       hasNextPage: boolean
+      endCursor?: string | null
     }
   }
 }
